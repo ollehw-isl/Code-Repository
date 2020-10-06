@@ -1,0 +1,457 @@
+### text mining
+library(tm)
+
+### Preprocessing
+patent4$abstract <- gsub('purpose','',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('PROBLEM TO BE SOLVED','',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('authentications','authentication',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('authenticating','authentication',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('authenticated','authentication',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('authenticate','authentication',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('verifies','verification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('verified','verification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('verifying','verification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('verify','verification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('acquired','acquisition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('acquiring','acquisition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('characteristics','characteristic',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognizes','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognized','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognize','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognitiond','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognitions','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recognizing','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('recignitionr','recognition',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('systems','system',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('modules','module',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('identifies','identification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('identifying','identification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('identified','identification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('identify','identification',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('units','unit',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('images','image',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('retinal','retina',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('controls','control',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('controller','control',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('brainwaves','eeg',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('brain waves','eeg',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('brainwave','eeg',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('brain wave','eeg',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('Electroencephalography','eeg',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('pcopyright','copyright',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('psolution','solution',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('electrodes','electrode',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('scanning','scan',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('scans', 'scan',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('scanned', 'scan',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('electrodes','electrode',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('electrodes','electrode',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('irises','iris',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('<P>COPYRIGHT','',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('<P>SOLUTION','',patent4$abstract, ignore.case = T)
+patent4$abstract <- gsub('JPO&INPIT','',patent4$abstract, ignore.case = T)
+
+
+### Corpus
+pat.corpus <- Corpus(VectorSource(patent4$abstract))
+pat.corpus <- tm_map(pat.corpus, tolower)
+pat.corpus <- tm_map(pat.corpus, removeNumbers)
+pat.corpus <- tm_map(pat.corpus, removePunctuation)
+pat.corpus <- tm_map(pat.corpus, removeWords, stopwords('en'))
+
+memory.limit(size=100000)
+
+### Remove word dictionary
+words1 <- c()
+for (i in c(3,5,7,9,11,13,15,17)) {
+  pat.dtm <- DocumentTermMatrix(pat.corpus, 
+                                control=list(
+                                  wordLengths = c(i, i+1)
+                                ))
+  words1 <- c(words1, colnames(pat.dtm[,colSums(as.matrix(pat.dtm))>2]))
+}
+
+words100 <- c()
+for (i in c(3,5,7,9,11,13,15,17)) {
+  pat.dtm <- DocumentTermMatrix(pat.corpus, 
+                                control=list(
+                                  wordLengths = c(i, i+1)
+                                ))
+  words100 <- c(words100, colnames(pat.dtm[,colSums(as.matrix(pat.dtm))>99]))
+}
+
+words100[1001:2000]
+
+
+words3 <- setdiff(words1, c('can', 'sheel', 'main', 'medium', 'side', 'end' ,'upper', 'including',
+                            'ware', 'first', 'second', 'based', 'used', 'one', 'least', 'set',
+                            'reference', 'number', 'area', 'said', 'step', 'result', 'according',
+                            'usung', 'provided', 'may', 'includes', 'field', 'high', 'portion', 'sets',
+                            'elements', 'wave', 'tool', 'right', 'front', 'frame', 'whether', 'detected',
+                            'detection', 'conprises','means', 'information', 'personal', 'section', 'check',
+                            'checking', 'connected', 'method', 'group', 'sequence' ,'component', 'template',
+                            'using', 'present', 'object', 'capable',
+                            'external', 'devic', 'devices', 'element', 'output', 'andor', 'methods', 'associated',
+                            'user', 'users', 'operation', 'corresponding', 'preset', 'connected', 'comprises', 'plurality', 
+                            'apparatus', 'original', 'evaluation', 'quality', 'comminication', 'part', 'mode', 'bid',
+                            'analysis', 'test', 'identifying', 'utility', 'data', 'means', 'able', 'acid',
+                            'act', 'add', 'age', 'aid', 'aims', 'air', 'also', 'anti', 'app;', 'arc', 'arm', 
+                            'art' ,'away', 'axis', 'back' ,'bag' ,'band', 'bar', 'base', 'bed', 'belt', 'best',
+                            'big', 'bill', 'bio', 'bit', 'cap', 'care', 'coin', 'cold', 'come', 'cost', 'cup',
+                            'cut', 'date', 'deep', 'dish', 'done', 'draw', 'due', 'dust', 'easy', 'ecu', 'end', 'ends',
+                            'etc', 'even', 'exit', 'fact', 'fan', 'far', 'fee', 'four', 'free', 'full', 'gain' ,'game',
+                            'gap', 'gas', 'get', 'gets', 'give', 'glue', 'hard', 'kind' ,'left' ,'lot' ,'meet' , 'tale', 
+                            'well', 'will', 'better', 'accept', 'achiev' ,'across', 'added', 'adding', 'along', 'among',
+                            'amount', 'animal' ,'answer', 'apart', 'apply', 'apron', 'around' ,'aspect', 'avoid', 'avoids', 
+                            'basic', 'basis', 'become', 'behind', 'belong', 'black', 'blade', 'blind' ,'bottom', 'bound', 
+                            'branch', 'buckle', 'built', 'bullet', 'burden', 'carry', 'catch', 'cause', 'caused', 'causes',
+                            'center', 'centre', 'chain', 'chair', 'change', 'child', 'circle', 'class', 'clear', 'clock', 'closd',
+                            'closed', 'color', 'column', 'comes' ,'common', 'course', 'cover', 'covers', 'create' ,'cross', 'curve',
+                            'curved', 'dailly', 'danger', 'defect' ,'degree', 'demand' ,'depth', 'detail', 'digit', 'domain' ,'effect', 
+                            'effici', 'either', 'emits', 'enable', 'enhanc', 'enough' ,'ensur', 'ensure', 'entire', 'entity', 'entry' ,
+                            'equal', 'event' ,'events', 'every', 'except' ,'exist', 'exists', 'experi', 'extent' ,'facing', 'failed', 'fault', 
+                            'fiber', 'field', 'fields', 'final' ,'finish', 'fixed' ,'fixing', 'flash' ,'floor' ,'focal' ,'focus', 
+                            'force', 'found' ,'fourth', 'freely', 'front', 'fully', 'future', 'gaming', 'gather' ,'gender', 'given', 
+                            'gives', 'gining' , 'glass', 'global', 'going', 'goods', 'grade', 'great', 'ground' ,'highly' ,'infrom',
+                            'inside', 'issue', 'issued' ,'issues', 'kinds', 'known' ,'labor' ,'large', 'larger', 'later', 'leads' ,'least',
+                            'leaves', 'legal', 'length' , 'lining' ,'loaded', 'local', 'locate', 'longer', 'master', 'matter', 
+                            'origin' ,'others', 'paris' ,'passed', 'passes', 'peaks', 'people' ,'period', 'phase', 'picked', 
+                            'pickup' ,'quick', 'proper', 'provid', 'prior', 'reach', 'relay', 'remove', 'report' ,'reset' ,'resin',
+                            'result' ,'reduce', 'refers', 'relate', 'rapid', 'return', 'rotate', 'roubd' ,'route', 'router', 'school', 'sealed' ,
+                            'series', 'serve', 'shared' ,'short', 'shown' ,'shows', 'sides', 'sleeve', 'slide', 'small' ,'since', 
+                            'solve', 'solved', 'solves', 'space', 'stable', 'staff', 'staffs', 'stage', 'stamp' ,'stand', 'start' ,'starts', 'state',
+                            'states', 'static' ,'status', 'still', 'stove', 'table' ,'taken' ,'takes', 'taking', 'target' ,'teller', 'three',
+                            'timely' ,'times', 'total', 'toward', 'travel' ,'trick' ,'trust', 'turned', 'thing', 'things' ,'third', 'though',
+                            'types', 'upper', 'usable', 'usage', 'useful', 'valid' ,'verif', 'voter', 'voting' ,'white', 'whole', 'whose', 'widely', 
+                            'window', 'wired', 'wires', 'wiring' ,'within' ,'witted', 'worker', 'works', 'wrong' ,'ability', 'abnormal' ,'absence', 'absolute',
+                            'accident' ,'accurate' ,'achieve', 'achieved', 'achieves', 'acoustic' ,'activate', 'activity' ,'adapted',
+                            'adaptibe', 'addition', 'address', 'adhesive', 'adjacent' ,'adjusted', 'adopted', 'adopting' ,'advance', 'advanced',
+                            'affected', 'already' ,'annular' ,'another', 'applied', 'applies', 'applying' ,'arranged', 'aspects', 'assembly', 'assigned',
+                            'nearing' ,'becomes' ,'belongs', 'benefit', 'benefits', 'besides', 'bonding' ,'boundary', 'brought', 'capable', 'capacity', 
+                            'carried' ,'carrier', 'carries', 'carrying' ,'category', 'causeing' ,'central' ,'certain' ,'changed',
+                            'changes', 'changing' ,'checked' ,'checking' ,'children', 'chinese' ,'circular' ,'claming' ,'cleaning' ,'combines', 'command',
+                            'commands', 'complete' ,'complex', 'composed', 'compound', 'comprise', 'computed', 'concave', 'conduct', 'conducts', 
+                            'confirm' ,'confirms' ,'consists' ,'constant', 'consumer', 'contact' ,'contacts' ,'contain' ,'contains' ,'contract' ,
+                            'contrast' ,'conveni', 'correct' ,'counter', 'counting' ,'coupled', 'coupling', 'created' ,'creates' ,'creating', '
+                            dicided', 'decides' ,'deciding' ,'decision' ,'derived', 'desired', 'defects' ,'defined' ,'defining', 'degrees',
+                            'directed', 'directly', 'disabled', 'discern', 'disclos', 'cisclose', 'disease', 'diseases', 'effects', 'employed', 'employee',
+                            'employs', 'enabled', 'enables', 'enabling', 'enhance', 'enhanced', 'ensured,', 'ensuring' ,'ensures', 
+                            'equipped', 'evidence', 'examinee', 'example', 'examples', 'exceeds', 'execute', 'executed', 'executes', 'exercise',
+                            'existing' ,'expanded', 'expected' ,'exposed' ,'exposure', 'extended', 'edtends', 'external', 'extreme', 
+                            'failure', 'feedback', 'feeding', 'filling' ,'finally',' finding', 'finished', 'forward' ,'gathered', 'glasses',
+                            'granted', 'gathers', 'general', 'generate', 'greater', 'greatly', 'getting' ,'guarante', 'history', 'holding',
+                            'ignition' ,'improve', 'improved' ,'improves', 'inboard', 'incident', 'inclined', 'include', 'included',
+                            'includes', 'incoming', 'increas', 'increase', 'indicate', 'infrared', 'initial', 'instead', 'intended', 'intercom', 
+                            'interest', 'involves', 'issuing', 'leading', 'learning' ,'leaving' ,'library' ,'lifting', 'lowered', 'maintain' ,'manually', 
+                            'meeting', 'members', 'methodp', 'missing', 'mutually', 'natural' ,'needing' ,'negative', 'nomally', 'objects',
+                            'obtained', 'obtains', 'official', 'offline', 'onboard', 'oneself', 'onetime', 'onetoone', 'operable' ,'operate' ,'operated', '
+                            operates' ,'opposite', 'optional' ,'ordering' ,'ordinary', 'outdoor', 'outside', 'outward', 'overall', 'overcome', 'parking', 
+                            'partial', 'parties', 'passive', 'peoples', 'perform', 'performs', 'personal' ,'persons', 'picking', 'placing', 
+                            'playing' ,'popular', 'portions' ,'positive', 'possible', 'precise', 'prepared', 'presence', 'problem' ,'problems', 
+                            'prodice', 'produced',' produces', 'proposed', 'protein' ,'provide', 'provided' ,'provides', 'quantity', 
+                            'question', 'quickly', 'rapidly' ,'reaches', 'reality', 'realize', 'realized', 'realizes', 'realtime', 'reduces',' reducing',
+                            'regular', 'related', 'relates', 'relating' ,'relative', 'release', 'released', 'reliable', 'reliably', 
+                            'remotely', 'removal', 'removed', 'removing', 'replace', 'replaced', 'request', 'requests', 'require', 'required', 'requires',
+                            'research' ,'resident' ,'resource', 'respect', 'results', 'retrieve', 'returned','returns' ,'reverse',
+                            'rotated', 'rotates' ,'rotating' ,'rotation' ,'routing' ,'running', 'satisfy', 'separate' ,'sequence', 'service', 'services',
+                            'serving' ,'several' ,'showing' ,'sliding', 'smaller', 'solution' ,'solving' ,'special', 'species', 'specific',
+                            'spraying', 'standard', 'standby', 'started', 'starting', 'startup', 'station' ,'steering' ,'stepping' ,'stopping', 
+                            'strength' ,'subject' ,'subjects' ,'succeeds', 'success', 'suitable' ,'supplied', 'supplies', 'support' ,'supports',
+                            'teaching' ,'temporal' ,'testing', 'therefor', 'thereby', 'thereof', 'towards', 'tohereon', 'thereto', 'together' ,'treater',
+                            'tracing', 'tracking', 'trained', 'training', 'treater', 'treating' ,'trouble', 'trusted', 'turning',
+                            'uniform' ,'utilize', 'utilized' ,'utilizes', 'variety' ,'various', 'waiting' ,'washing', 'watching', 
+                            'whereby', 'wherein' ,'without', 'workers', 'working' ,'absorption','accurately', 'achieving', 'activated','activating',
+                            'additional' ,'adjustable', 'adjusting', 'adjustment', 'advantage',' advantages' ,'arranging', 'artificial',
+                            'assistant', 'associated', 'attribute', 'attributes' ,'authentic', 'available', 'background', 'backstage',' beforehand', 'belonging', 
+                            'beneficial', 'broadcast',' candidate', 'candidates', 'compatible', 'completed', 'completely', 'completing', 'comprised',
+                            'confidence', 'conductiong' ,'conducted', 'comprising', 'computing', 'concerned', 'concerning', 'conductive',
+                            'configured',' confirmed', 'confirming', 'considered', 'consistent' ,'consisting', 'constitute', 'continuous',
+                            'controlled', 'convenient', 'coordinate', 'corrected',' correcting', 'correction' ,'correctly', 'correlated', 
+                            'correspond',' credential', 'currently', 'curvature', 'dedicated', 'definition' ,'delivered', 'depending', 'determine',
+                            'determined', 'determines', 'developed', 'devicethe', 'different', 'difficult', 'difficulty', 'discharge',
+                            'education' , 'effective', 'effectual', 'efficiency', 'efficient', 'eliminate', 'eliminated', 'enbedding',
+                            'embodiment' ,'employing', 'enhancing', 'especially', 'establish', 'estimated', 'estimating', 'excellent', 'existence',
+                            'expansion', 'experience', 'extension', 'externally', 'extremely' ,'facilitate', 'favorable', 'following', 
+                            'gathering', 'generally' , 'gradually' ,'guarantee', 'guaranteed', 'guarantees', 'highspeed', 'histogram' ,'historical', 
+                            'household', 'important', 'improving', 'including', 'increased', 'increases', 'increasing', 'indicated', 'indicating', 'indicates',
+                            'indicative', 'influence',' induction' ,'influenced', 'initiated', 'inserting', 'intergrally', 'integrated', 'integrates',
+                            'integrity', 'intensity', 'internally', 'introduced', 'knowledge', 'largescale'
+                            ))
+
+word4 <- setdiff(words3, c('products' ,'piece', 'bicycle', 'manual', 'blocks', 'type', 'public', 
+                           'outlet', 'technology', 'water',  'level' ,'rate', 'pipe', 
+                           'input','mine' ,'point', 'pointing' ,'installed', 'controlling' ,'member' ,
+                           'mounting', 'discloses', 'housing' ,'top', 'lower' ,'portable', 'use', 'region', 
+                           'operating' ,'current', 'acquires', 'acquire', 'acquisition' ,'points' ,'score', 
+                           'emergency', 'page', 'office', 'manager', 'attendance', 'work' ,'film', 'plate',
+                           'surface', 'flexible', 'structure', 'formed', 'board', 'layer' ,'discolses', 'casing',
+                           'lamp', 'respectively' ,'discernment' ,'connection', 'multiple' ,
+                           'handheld',  'pen', 'invention' ,'intelligent' ,'instrument',
+                           'time' ,'navigation', 'visual', 'zipper', 'owner' ,'thus', 'interaction', 
+                           'seal' ,'room' ,'personnel' ,'query' ,'performing', 'delivery', 'item' ,'items',
+                           'location' ,'tag', 'party' ,'calling' ,'ticket', 'preparation', 'medicine', 'traditional',
+                           'parts', 'components', 'active', 'oil', 'material', 'shell' ,'remote', 'communication', 'candidate', 'techniques', 'seat',
+                           'condition' ,'obtaining' ,'steps', 'discloses', 'authorized', 'profile'))
+
+word5 <- setdiff(word4, c('upon', 'map', 'mark', 'mass', 'cell', 'discolsed', 'combined', 'accordingly', 'constitution', 'improv', 
+                          'place', 'array', 'order', 'via', 'hole', 'ring', 'sheet', 'gun', 'root', 'wallet', 'water', 'technical',
+                          'accuracy', 'effectively', 'form', 'real', 'true', 'keep', 'make', 'xray',
+                          'sent', 'uses', 'name', 'many', 'low', 'pass', 'tip', 'way','less', 'fine', 
+                          'flat', 'held' ,'just', 'made', 'raw', 'put', 'mask', 'much', 'row', 'sum', 'like', 'five',
+                          'wide', 'red', 'onto', 'must', 'need', 'zone' ,'fed' ,'kept', 'dial', 'menu', 'pair', 'rod',
+                          'job', 'view', 'half', 'new', 'past', 'fast', 'goes', 'skit', 'ink', 'last',  'live', 
+                          'per', 'loss', 'long' ,'lost', 'ones' ,'drug', 'fit', 'risk', 'wire',  'dual', 'mean', 
+                          'leaf', 'hold', 'rear', 'cash', 'flux' ,'heat', 'led', 'thin', 'yes', 'puts', 'near', 'tube', 'edge', 'run', 
+                          'met', 'soft', 'dot', 'pcr', 'find' ,'site', 'food' ,'save', 'kit' ,'non', 'lead', 'hall', 'tank', 'emit', 'take', 'dsp', 'ray', 'push', 
+                          'poor' ,'tree', 'load', 'pull', 'tax', 'play', 'task', 'show' ,'sub', 'safe', 'life', 'net', 
+                          'post', 'ion', 'mesh', 'lid', 'rays', 'dark', 'adds', 'worn', 'gray', 'hot', 'fire', 'old', 'tags', 'help',
+                          'oct', 'rest', 'roll', 'gel', 'lies', 'know', 'lan', 'sale', 'ivr', 'maps', 'jack', 'rack', 'man', 'rice' ,'fake', 
+                          'tray', 'icon', 'duty', 'aim' ,'herb', 'tea', 'errors', 'metric', 'single', 'herein', 
+                          'called', 'higher', 'occur', 'occurs', 'trial', 'serves', 'paste', 'fraud', 'namely', 'pieces', 'placed', 'plural',
+                          'making', 'simple', 'format', 'linear', 'giving', 'onoff', 'buzzer', 'binary', 'easily', 'manner', 'square', 'groups', 
+                          'checks', 'makes', 'areas', 'always', 'pairs', 'supply', 'mirror', 'platen' ,'source', 'joint', 'caller', 
+                          'middle', 'termil', 'probe', 'tested', 'filled', 'raised', 'little', 'analog', 'holder', 'select', 'shift', 
+                          'forms', 'recess', 'roller', 'unique' ,'costs', 'calls', 'wheel', 'plant' ,'stream', 'strip', 'oxygen' ,'family', 'assist', 
+                          'early', 'normal', 'agent', 'ridges', 'adopts', 'strong' ,'saving', 'direct', 'solder' ,'night', 'error', 'seller', 'solid',
+                          'adjust', 'money', 'price', 'offer', 'liquid', 'mount', 'sweat', 'charge', 'offset', 'setup', 'delay', 'index', 'double', 
+                          'simply', 'coming', 'smooth', 'mixed', 'surely', 'saved', 'packet', 'gabor', 'polar', 'losing' ,'subset', 'played', 
+                          'edges', 'fused', 'inner', 'outer', 'stripe', 'nature', 'string', 'music', 'moment', 'lamps', 
+                          'serial', 'hisher', 'marked', 'rather', 'living', 'funds', 'novel', 'needs', 'claim', 'player', 'needed',
+                          'policy', 'track' ,'drying' ,'holds', 'actual', 'punch', 'update', 'prompt', 'remind', 'needle', 'owners', 'modes',
+                          'mainly', 'proof', 'names', 'filing', 'pages', 'hybrid', 'share', 'holes', 'meets', 'fails', 'aiming', 
+                          'dialing', 'mutual' ,'powder', 'hollow', 'cavity', 'mixing', 'proxy', 'rights', 'robust', 'sender', 'stress', 'roots', 
+                          'inlet', 'modern', 'hinge', 'virtue', 'campus', 'combine', 'analyzes', 'causing', 'emitted', 'business', 'closely', 
+                          'therein' ,'spacing' ,'reducing', 'respond' ,'located' ,'fitting', 'visually', 'centralized' ,'maintaining', 'accumulated',
+                          'segmentation', 'surrounding', 'furthermore', 'efficiently', 'requrements', 'implemented', 'represented',
+                          'complicated', 'representing', 'selectively', 'seccessively', 'subsequently', 'orientation', 'communicate', 
+                          'satisfies'))
+
+
+
+### DTM ????.
+pat.dtm3 <- DocumentTermMatrix(pat.corpus, 
+                              control=list(
+                              dictionary = word5,
+                              weigthing = weightTf
+                                           ))
+pat.dtm2 <- pat.dtm3[rowSums(as.matrix(pat.dtm3))==0,]
+which(rowSums(as.matrix(pat.dtm3))==0)
+
+patent4 <- patent4[-32466,]
+#### ???ȸ𵨸?.
+
+#### # of topics Selection
+######## Homonic Mean 
+install.packages('Rmpfr')
+library(Rmpfr)
+harmonicMean <- function(logLikelihoods, precision=2000L) {
+  llMed <- median(logLikelihoods)
+  as.double(llMed - log(mean(exp(-mpfr(logLikelihoods,
+                                       prec=precision) + llMed))))
+}
+
+n_topics <- c(5, 10, 20, 30, 40, 50)
+burnin <- 1000
+iter <- 1000
+keep <- 50
+
+fitted_many <- lapply(n_topics, function(k) LDA(pat.dtm, k=k, method="Gibbs", control=list(burnin=burnin, iter=iter, keep=keep)))
+
+logLiks_many <- lapply(fitted_many, function(L) L@logLiks[-c(1:(burnin/keep))])
+
+hm_many <- sapply(logLiks_many, function(h) harmonicMean(h))
+
+ggplot(data.frame(n_topics, hm_many), aes(x=n_topics, y=hm_many)) +
+  geom_path(lwd=1.5) +
+  theme(text=element_text(family=NULL),
+        axis.title.y=element_text(vjust=1, size=16),
+        axis.title.x=element_text(vjust=-.5, size=16),
+        axis.text=element_text(size=16),
+        plot.title=element_text(size=20)) +
+  xlab('Number of Topics') +
+  ylab('Harmonic Mean') +
+  ggplot2::annotate("text", x=9, y=-199000, label=paste("The optimal number of topics is", n_topics[which.max(hm_many)])) +
+  labs(title="Latent Dirichlet Allocation Analysis",
+       subtitle="How many distinct topics?")
+
+
+
+
+
+######## perplexity 
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+library(stringr)
+
+ap_lda_compare <- n_topics %>%
+  map(LDA, x = pat.dtm, control = list(seed = 1109))
+
+data_frame(k = n_topics,
+           perplex = map_dbl(ap_lda_compare, perplexity)) %>%
+  ggplot(aes(k, perplex)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Evaluating LDA topic models",
+       subtitle = "Optimal number of topics (smaller is better)",
+       x = "Number of topics",
+       y = "Perplexity") +
+  theme_bw()
+
+
+
+ap_lda_compare2 <- n_topics %>%
+  map(LDA, x = pat.dtm2, control = list(seed = 1109))
+
+data_frame(k = n_topics,
+           perplex = map_dbl(ap_lda_compare2, perplexity)) %>%
+  ggplot(aes(k, perplex)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Evaluating LDA topic models",
+       subtitle = "Optimal number of topics (smaller is better)",
+       x = "Number of topics",
+       y = "Perplexity")
+
+y <- data.frame(No. <- n_topics, Harmonic_mean <- hm_many, Perplexity <- map_dbl(ap_lda_compare, perplexity))
+colnames(y) <- c('No. Topics', 'Harmonic mean', 'Perplexity')
+write.csv(y, 'topic_num.csv', row.names = F)
+terms(fitted_many[[5]], 9) ### Topic 5???? ??�� 9???? ?ܾ? ????
+
+terms(ap_lda_compare[[3]], 9) ### Topic 5???? ??�� 9???? ?ܾ? ????
+posterior_lda = posterior(ap_lda_compare[[5]])
+
+### ???? ???? Ȯ??.389]
+lda.topic.year <- lda.topics %>% group_by
+lda.topics <- data.frame((posterior_lda$topics))
+lda.topics$year <- patent4$year[-34389] 
+lda.topic.year <- lda.topics %>% group_by(year) %>%
+  summarise(X1 = sum(X1), X2 = sum(X2), X3 = sum(X3), X4 = sum(X4), X5 = sum(X5), X6 = sum(X6), 
+            X7 = sum(X7), X8 = sum(X8), X9 = sum(X9), X10 = sum(X10), X11 = sum(X11), X12 = sum(X12), 
+            X13 = sum(X13), X14 = sum(X14), X15 = sum(X15), X16 = sum(X16), X17 = sum(X17), X18 = sum(X18), 
+            X19 = sum(X19), X20 = sum(X20), X21 = sum(X21), X22 = sum(X22), X23 = sum(X23), X24 = sum(X24), 
+            X25 = sum(X25), X26 = sum(X26), X27 = sum(X27), X28 = sum(X28), X29 = sum(X29), X30 = sum(X30),
+            X31 = sum(X31), X32 = sum(X32), X33 = sum(X33), X34 = sum(X34), X35 = sum(X35), X36 = sum(X36), 
+            X37 = sum(X37), X38 = sum(X38), X39 = sum(X39), X40 = sum(X40))
+
+
+lda.topic.year <- lda.topic.year[-c(12, 20, 34, 36)]
+colnames(lda.topic.year) <- c('year', 'Topic1', 'Topic2', 'Topic3', 'Topic4', 'Topic5', 'Topic6', 
+                              'Topic7', 'Topic8', 'Topic9', 'Topic10', 'Topic11', 'Topic12', 'Topic13', 
+                              'Topic14', 'Topic15', 'Topic16', 'Topic17', 'Topic18', 'Topic19', 'Topic20', 
+                              'Topic21', 'Topic22', 'Topic23', 'Topic24', 'Topic25', 'Topic26', 'Topic27', 
+                              'Topic28', 'Topic29', 'Topic30', 'Topic31', 'Topic32', 'Topic33', 'Topic34', 
+                              'Topic35', 'Topic36')
+
+###### Topic change
+
+topic_change <- c()
+for (i in 1:length(lda.topics_remove_topic$X1)){
+  topic_change <- c(topic_change, which(lda.topics_remove_topic[i,1:36] == max(lda.topics_remove_topic[i,1:36])))
+}
+
+patent4$topic <- topic_change
+
+table(topic_change)
+table(unlist(topics(ap_lda_compare[[5]], threshold = 0.3)))
+thres2 <- topics(ap_lda_compare[[5]], threshold = 0.2)
+thres2_1 <- lapply(thres2, length)
+unique(which(thres2_1 == 1))
+
+### posterier probobility
+library(reshape2)
+lda.topic.year2 <- melt(lda.topic.year, id = c('year'))
+lda.topic.year2$variable <- factor(lda.topic.year2$variable)
+write.csv(lda.topic.year2, 'topic_year_trend.csv', row.names = F)
+
+lda.topics$Auth <- patent4$Auth
+lda.topic.year.auth <- lda.topics %>% group_by(year, Auth) %>%
+  summarise(X1 = sum(X1), X2 = sum(X2), X3 = sum(X3), X4 = sum(X4), X5 = sum(X5), X6 = sum(X6), 
+            X7 = sum(X7), X8 = sum(X8), X9 = sum(X9), X10 = sum(X10), X11 = sum(X11), X12 = sum(X12), 
+            X13 = sum(X13), X14 = sum(X14), X15 = sum(X15), X16 = sum(X16), X17 = sum(X17), X18 = sum(X18), 
+            X19 = sum(X19), X20 = sum(X20), X21 = sum(X21), X22 = sum(X22), X23 = sum(X23), X24 = sum(X24), 
+            X25 = sum(X25), X26 = sum(X26), X27 = sum(X27), X28 = sum(X28), X29 = sum(X29), X30 = sum(X30),
+            X31 = sum(X31), X32 = sum(X32), X33 = sum(X33), X34 = sum(X34), X35 = sum(X35), X36 = sum(X36), 
+            X37 = sum(X37), X38 = sum(X38), X39 = sum(X39), X40 = sum(X40))
+lda.topic.year.auth[131,] <- c('1990', 'CN', rep(0,40))
+lda.topic.year.auth[132,] <- c('1990', 'KR', rep(0,40))
+lda.topic.year.auth[133,] <- c('1991', 'KR', rep(0,40))
+lda.topic.year.auth[134,] <- c('1992', 'KR', rep(0,40))
+lda.topic.year.auth[135,] <- c('1993', 'KR', rep(0,40))
+lda.topic.year.auth <- lda.topic.year.auth[order(lda.topic.year.auth$year,lda.topic.year.auth$Auth),]
+lda.topic.year.auth <- lda.topic.year.auth[-c(13, 21, 35, 37)]
+colnames(lda.topic.year.auth) <- c('year', 'Auth', 'Topic1', 'Topic2', 'Topic3', 'Topic4', 'Topic5', 'Topic6', 
+                              'Topic7', 'Topic8', 'Topic9', 'Topic10', 'Topic11', 'Topic12', 'Topic13', 
+                              'Topic14', 'Topic15', 'Topic16', 'Topic17', 'Topic18', 'Topic19', 'Topic20', 
+                              'Topic21', 'Topic22', 'Topic23', 'Topic24', 'Topic25', 'Topic26', 'Topic27', 
+                              'Topic28', 'Topic29', 'Topic30', 'Topic31', 'Topic32', 'Topic33', 'Topic34', 
+                              'Topic35', 'Topic36')
+
+lda.topic.year.auth2 <- melt(lda.topic.year.auth, id = c('year', 'Auth'))
+lda.topic.year.auth2$variable <- factor(lda.topic.year.auth2$variable)
+write.csv(lda.topic.year.auth2, 'auth_posterier.csv', row.names = F)
+table(topic_change)
+
+round(apply(lda.topic.year[1:22,2:37],2 ,sum),2)
+round(apply(lda.topic.year[23:27,2:37],2 ,sum),2)
+xxx <- data.frame(past = round(apply(lda.topic.year[1:22,2:37],2 ,sum),2),
+                  recent = round(apply(lda.topic.year[23:27,2:37],2 ,sum),2))
+xx <- kmeans(xxx, 5)
+xxx$group <- xx$cluster
+
+plot(xxx$past, xxx$recent, col = xxx$group, pch = xxx$group, xlab = 'Up to 2011' , ylab = 'Since 2011', )
+legend("topright",legend = c('Group1', 'Group2', 'Group3', 'Group4', 'Group5'), col = c(1,3,4,5,2), pch = c(1,3,4,5,2))
+
+write.csv(lda.topic.year.auth, 'auth_posterier.csv', row.names = F)
+
+#### 
+
+
+lda.topics <- data.frame((posterior_lda$topics))
+lda.topics$year <- patent4$year[-34389]
+lda.topic.year <- lda.topics %>% group_by(year) %>%
+  summarise(X1 = sum(X1), X2 = sum(X2), X3 = sum(X3), X4 = sum(X4), X5 = sum(X5), X6 = sum(X6), 
+            X7 = sum(X7), X8 = sum(X8), X9 = sum(X9), X10 = sum(X10), X11 = sum(X11), X12 = sum(X12), 
+            X13 = sum(X13), X14 = sum(X14), X15 = sum(X15), X16 = sum(X16), X17 = sum(X17), X18 = sum(X18), 
+            X19 = sum(X19), X20 = sum(X20), X21 = sum(X21), X22 = sum(X22), X23 = sum(X23), X24 = sum(X24), 
+            X25 = sum(X25), X26 = sum(X26), X27 = sum(X27), X28 = sum(X28), X29 = sum(X29), X30 = sum(X30))
+
+### LDA 
+library(topicmodels)
+i=522
+a= 1.25
+k = 40
+beta = 0.1
+
+lda.out1 = LDA(pat.dtm, control = list(seed=i+141, alpha = a), k = 40)
+lda.out2 = LDA(pat.dtm2, control = list(seed=i+1411, alpha = a), k = 40)
+lda.out3 = LDA(pat.dtm, control = list(seed=i+14111, alpha = a), k = 40)
+lda.out4 = LDA(pat.dtm, control = list(seed=i+141111, alpha = a), k = 50)
+lda.out5 = LDA(pat.dtm, control = list(seed=i+1411111, alpha = a), k = 50)
+lda.out6 = LDA(pat.dtm, control = list(seed=i+14111111, alpha = a), k = 50)
+lda.out7 = LDA(pat.dtm, control = list(seed=i+141111111, alpha = a), k = 50)
+lda.out8 = LDA(pat.dtm, control = list(seed=i+1411111111, alpha = a), k = 50)
+terms(lda.out1, 9) 
+terms(lda.out2, 9) 
+terms(lda.out3, 9) 
+terms(lda.out4, 9) 
+terms(lda.out5, 9
+terms(lda.out6, 9) 
+terms(lda.out7, 9) 
+terms(lda.out8, 9) 
+
+### ???? ???? Ȯ??.
+posterior_lda = posterior(lda.out1)
+lda.topics <- data.frame((posterior_lda$topics))
+apply(lda.topics, 2, sum)
+
+lda.topics <- data.frame((posterior_lda$topics))
+lda.topics$year <- patent4$year[-34389]
+lda.topic.year <- lda.topics %>% group_by(year) %>%
+  summarise(X1 = sum(X1), X2 = sum(X2), X3 = sum(X3), X4 = sum(X4), X5 = sum(X5), X6 = sum(X6), 
+            X7 = sum(X7), X8 = sum(X8), X9 = sum(X9), X10 = sum(X10), X11 = sum(X11), X12 = sum(X12), 
+            X13 = sum(X13), X14 = sum(X14), X15 = sum(X15), X16 = sum(X16), X17 = sum(X17), X18 = sum(X18), 
+            X19 = sum(X19), X20 = sum(X20), X21 = sum(X21), X22 = sum(X22), X23 = sum(X23), X24 = sum(X24), 
+            X25 = sum(X25), X26 = sum(X26), X27 = sum(X27), X28 = sum(X28), X29 = sum(X29), X30 = sum(X30),
+            X31 = sum(X31), X32 = sum(X32), X33 = sum(X33), X34 = sum(X34), X35 = sum(X35), X36 = sum(X36), 
+            X37 = sum(X37), X38 = sum(X38), X39 = sum(X39), X40 = sum(X40))
