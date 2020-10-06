@@ -1,0 +1,25 @@
+#ridge, lasso, elastic
+install.packages("glmnet"); install.packages('dplyr');
+library(glmnet)
+library('dplyr')
+
+prostate<-read.csv("Prostate_Cancer_data.csv")
+head(prostate)
+
+y <- prostate$lpsa
+x <- prostate %>% select(lcavol, lweight, age, lbph, svi, lcp, gleason, pgg45) %>% data.matrix()
+lambdas <- seq(0, 0.3, by = .05)
+
+cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
+#alpha =0 ridge, =1, lasso, =0.5 elasticnet
+#cv.glmnet() uses cross-validation to work out how well each model generalises, which we can visualise as:
+
+plot(cv_fit)
+#그려지는 그림에서 가장 낮은 점이 최적의 람다이다
+#CV에서 오차를 가장 최소화하는 로그 람다값
+
+opt_lambda <- cv_fit$lambda.min
+opt_lambda #테스트 set이 시행할때마다 바뀔수 있어 값이 바뀐다.
+
+fin<-glmnet(x,y,alpha=0, lambda = opt_lambda)
+coef(fin)
