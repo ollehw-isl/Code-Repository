@@ -1,0 +1,40 @@
+### TF-IDF
+### Token
+library(tidyr)
+library(stringr)
+library(tidytext)
+
+only_token <- only_gender %>%
+  unnest_tokens(word, Abstract) %>%
+  anti_join(stop_words)
+
+only_token <- only_token[!(only_token$word %in% custom_stopword),]
+only_token$gender <- as.character(only_token$gender)
+only_token$gender[only_token$gender == 'F'] <- 'Female'
+only_token$gender[only_token$gender == 'M'] <- 'Male'
+only_token$gender <- as.factor(only_token$gender)
+
+library(ggplot2)
+
+
+x<- only_token %>%
+  count(gender, word, sort = T) %>%
+  bind_tf_idf(word, gender, n) %>%
+  group_by(gender) %>%
+  top_n(5) %>%
+  ungroup %>%
+  mutate(word = reorder(word, tf_idf))
+
+x <- write.csv(x, 'tf-idf_only.csv', row.names = F)
+library(ggplot2)
+only_token %>%
+  count(gender, word, sort = T) %>%
+  bind_tf_idf(word, gender, n) %>%
+  group_by(gender) %>%
+  top_n(10) %>%
+  ungroup %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = gender)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~gender, scales = 'free') +
+  coord_flip()
