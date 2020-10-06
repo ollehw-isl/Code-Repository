@@ -1,0 +1,73 @@
+### svm_rfe
+svmRFE()
+svmrfeFeatureRanking = function(x,y){ 
+  n = ncol(x)
+  survivingFeaturesIndexes = seq(1:n) 
+  featureRankedList = vector(length=n) 
+  rankedFeatureIndex = n
+  
+  while(length(survivingFeaturesIndexes)>0){ 
+    
+    #train the support vector machine 
+    svmModel = svm(x[, survivingFeaturesIndexes], y, cost = 10, cachesize=500,scale=F, type="C-classification", kernel="linear" )	
+    
+    #compute the weight vector 
+    w = t(svmModel$coefs)%*%svmModel$SV
+    
+    #compute ranking criteria 
+    rankingCriteria = w * w
+    
+    #rank the features 
+    ranking = sort(rankingCriteria, index.return = TRUE)$ix
+    
+    #update feature ranked list 
+    featureRankedList[rankedFeatureIndex] = survivingFeaturesIndexes[ranking[1]] 
+    rankedFeatureIndex = rankedFeatureIndex - 1
+    
+    #eliminate the feature with smallest ranking criterion 
+    (survivingFeaturesIndexes = survivingFeaturesIndexes[-ranking[1]])
+  } 
+  
+  return (featureRankedList)
+}
+rfe <- svmrfeFeatureRanking(x = semi[-410], y = semi[410])
+
+
+z <- c()
+x <- seq(1,100, by = 1)
+for(j in x){
+  semi_rfe <- semi[c(rfe[1:j], 410)]
+  accuracy <- c()
+  spec <- c()
+  rec <- c()
+  for(i in 1:5){
+    test <- semi_rfe[unlist(folds[[i]]),]
+    train <- semi_rfe[-unlist(folds[[i]]),]
+    svm_semi <- svm(Y~., data = train)
+    pred_svm <- predict(svm_semi,test, type = 'response')
+    confusion <- table(test$Y, pred_svm)
+    accuracy <- c(accuracy,(confusion[1,1]+confusion[2,2])/sum(confusion))
+    spec <- c(spec, 1-((confusion[2,2])/(confusion[2,1]+confusion[2,2])))
+    rec <- c(rec, 1-((confusion[1,1])/(confusion[1,1]+confusion[1,2])))
+  }
+  z <- c(z,mean(accuracy))
+}
+
+### 60
+semi_rfe60 <- semi[c(rfe[1:60], 410)]
+accuracy <- c()
+spec <- c()
+rec <- c()
+for(i in 1:5){
+  test <- semi_rfe60[unlist(folds[[i]]),]
+  train <- semi_rfe60[-unlist(folds[[i]]),]
+  svm_semi <- svm(Y~., data = train)
+  pred_svm <- predict(svm_semi,test, type = 'response')
+  confusion <- table(test$Y, pred_svm)
+  accuracy <- c(accuracy,(confusion[1,1]+confusion[2,2])/sum(confusion))
+  spec <- c(spec, 1-((confusion[2,2])/(confusion[2,1]+confusion[2,2])))
+  rec <- c(rec, 1-((confusion[1,1])/(confusion[1,1]+confusion[1,2])))
+}
+mean(accuracy)
+mean(spec)
+mean(rec)
