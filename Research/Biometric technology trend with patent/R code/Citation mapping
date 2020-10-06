@@ -1,0 +1,130 @@
+### forward
+forward_ipc1 <- read.xlsx('citation_IPC.xlsx', sheet = 1)
+forward_ipc2 <- read.xlsx('citation_IPC.xlsx', sheet = 2)
+forward_ipc <- rbind(forward_ipc1, forward_ipc2)
+
+forward_ipc3 <- forward_ipc %>% group_by(ID, publn) %>%
+  summarise(index = 1)
+
+table(forward_ipc$ID)[1:10]
+forward_ipc <- subset(forward_ipc, forward_ipc$ID %in% unique(patent4$ID))
+forward_ipc <- subset(forward_ipc, forward_ipc$publn != 'NULL')
+sort(table(forward_ipc$IPC), decreasing = T)[41:50]
+
+### backward
+backward_ipc1 <- read.xlsx('Backward_ipc.xlsx', sheet = 1)
+backward_ipc2 <- read.xlsx('Backward_ipc.xlsx', sheet = 2)
+backward_ipc <- rbind(backward_ipc1, backward_ipc2)
+
+backward_ipc <- subset(backward_ipc, backward_ipc$ID %in% unique(patent4$ID))
+backward_ipc <- subset(backward_ipc, backward_ipc$IPC != 'NULL')
+sort(table(backward_ipc$IPC), decreasing = T)[1:10]
+
+
+### person
+bacward_person1 <- read.xlsx('backward_person.xlsx', sheet = 1)
+bacward_person2 <- read.xlsx('backward_person.xlsx', sheet = 2)
+backward_person <- rbind(bacward_person1[1:3], bacward_person2[1:3])
+
+bacward_person <- bacward_person %>% group_by(ID, publn) %>%
+  summarise(index = 1)
+
+backward_person <- subset(backward_person, backward_person$person_name != 'NULL')
+backward_person <- subset(backward_person, backward_person$ID %in% unique(patent4$ID))
+colnames(backward_person)[3] <- 'cited_person'
+
+length(unique(backward_person$ID))
+x <- unique(bacward_person$ID)
+x <- data.frame(ID = x)
+x <- merge(x, patent4[1:5], by = 'ID')
+backward_person <- bacward_person
+backward_person <- backward_person[c(1,3)]
+backward_person
+### O-film
+backward_person$cited_person[grep('o-film ', backward_person$cited_person, ignore.case = T)] <- 'O-film Tech Co.'
+backward_person$cited_person[grep('oufei ', backward_person$cited_person, ignore.case = T)] <- 'O-film Tech Co.'
+
+### BBK Electronics
+backward_person$cited_person[grep(' OPPO ', backward_person$cited_person, ignore.case = T)] <- 'BBK Electronics'
+backward_person$cited_person[grep('^VIVO ', backward_person$cited_person, ignore.case = T)] <- 'BBK Electronics'
+
+### PAPASONIC
+backward_person$cited_person[grep('^matsushita ele', backward_person$cited_person, ignore.case = T)] <- 'PAPASONIC'
+
+### MITSUBISHI ELECTRIC
+backward_person$cited_person[grep('^MITSUBISHI ELEC', backward_person$cited_person, ignore.case = T)] <- 'MITSUBISHI ELECTRIC'
+
+### Toshiba
+backward_person$cited_person[grep('toshiba', backward_person$cited_person, ignore.case = T)] <- 'Toshiba Co.'
+
+### OKI Electric
+backward_person$cited_person[grep('OKI ELEC', backward_person$cited_person, ignore.case = T)] <- 'OKI ELECTRIC'
+
+### SAMSUNG
+backward_person$cited_person[grep('samsung', backward_person$cited_person, ignore.case = T)] <- 'Samsung'
+
+### HITACHI
+backward_person$cited_person[grep('HITACHI', backward_person$cited_person, ignore.case = T)] <- 'HITACHI LTD'
+
+### FUJITSU
+backward_person$cited_person[grep('FUJITSU', backward_person$cited_person, ignore.case = T)] <- 'FUJITSU LTD'
+
+### SONY
+backward_person$cited_person[grep('Sony ', backward_person$cited_person, ignore.case = T)] <- 'SONY'
+
+### NEC
+backward_person$cited_person[grep('NEC ', backward_person$cited_person, ignore.case = T)] <- 'NEC Co.'
+
+### LG
+backward_person$cited_person[grep('LG ', backward_person$cited_person, ignore.case = T)] <- 'LG CO.'
+
+### IBM
+backward_person$cited_person[grep('IBM', backward_person$cited_person)] <- 'IBM'
+backward_person$cited_person[grep('International Business Machin', backward_person$cited_person, ignore.case = T)] <- 'IBM'
+
+### CANON
+backward_person$cited_person[grep('CANON ', backward_person$cited_person, ignore.case = T)] <- 'CANON INC'
+
+### Yulong
+backward_person$cited_person[grep('Yulong com', backward_person$cited_person, ignore.case = T)] <- 'Yulong Computer Telecommunication Scientific (Shenzhen) Co.'
+
+### ZHANG HAIPING
+backward_person$cited_person[grep('ZHANG HAIPING', backward_person$cited_person, ignore.case = T)] <- 'ZHANG HAIPING'
+
+### ETRI
+backward_person$cited_person[grep('electronics and telecommunicati', backward_person$cited_person, ignore.case = T)] <- 'Electronics and Telecommunications Research Institute'
+
+### Boe
+backward_person$cited_person[grep('boe ', backward_person$cited_person, ignore.case = T)] <- 'Boe Technology Group Co., Ltd.'
+
+### Top20
+backward_person <- backward_person %>% group_by(ID, publn, cited_person) %>%
+  summarise(index = 1)
+
+backward_person 
+
+
+
+
+
+backward_person20 <- subset(backward_person, backward_person$cited_person %in% Top20_applicant)
+backward_person <- merge(backward_person, back_forward_person1[c(1,4)], by = 'ID')
+backward_person <- subset(backward_person, backward_person$person_name %in% Top20_applicant)
+
+backward_person <- backward_person[c(1,3,2)]
+table(backward_person$person_name)
+###
+backward_person201 <- subset(backward_person20, backward_person20$ID %in% unique(back_forward_person1$ID))
+table(backward_person20)
+backward_person20 <- merge(backward_person20, back_forward_person1[c(1,4)], by = 'ID')
+
+backward_person20_matrix <- table(backward_person20$person_name, backward_person20$cited_person)
+backward_person20_own_cit <- c()
+for (i in 1:20) {
+  backward_person20_own_cit <- c(backward_person20_own_cit, backward_person20_matrix[i,i])
+}
+
+### top 20 own cit
+backward_person20_own_cit
+back_forward_person3$own_backward <- backward_person20_own_cit
+
