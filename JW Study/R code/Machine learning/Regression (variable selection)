@@ -1,0 +1,26 @@
+# variable selection
+install.packages('MASS')
+library(MASS)
+
+reg <- lm(Credit_amount ~ Duration_in_month + Installment_rate + Present_residence + Age +
+            Num_of_existing_credits + Num_of_people_liable, data=german1)
+null <- lm(Credit_amount ~ 1, data = german1)
+full <- lm(Credit_amount ~ ., data = german1)
+
+# Partial F-test
+reduced_model = lm(Credit_amount ~ Duration_in_month + Installment_rate + Present_residence + 
+                    Num_of_existing_credits + Num_of_people_liable, data=german1)
+anova(reduced_model, full)
+
+reduced_model = lm(Credit_amount ~ Duration_in_month + Installment_rate + Present_residence + Age + 
+                     Num_of_existing_credits, data=german1)
+anova(reduced_model, full)
+
+#전진선택법
+forward <- step(null, direction = "forward",scope = list(lower=null, upper=full))
+
+#후진소거법
+backward <- step(reg, direction = "backward")
+
+#교차선택법
+stepwise <- step(null, direction = "both", scope = list(lower=null, upper=full))
