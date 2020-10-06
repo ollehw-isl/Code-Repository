@@ -1,0 +1,209 @@
+### gender 불러오기.
+Gender <- read.csv('Gender.csv', stringsAsFactors = F)
+head(Gender)
+Person_ID <- unique(Gender$Person_ID)
+
+library(dplyr)
+Gender$index = 1
+Gender <- Gender %>% group_by(Person_ID, Gender) %>%
+  summarise(index = mean(index))
+Gender_first_df <- Gender[Gender$Gender == 'M' | Gender$Gender == 'F',]
+Gender_first_df <- Gender_first_df[,1:2]
+
+table(Gender$Gender) ### 67211 -> 9406 : 14618 : 43187
+Gender_no <- Gender[Gender$Gender == '',]
+Gender_no
+write.csv(Gender_no, 'Gender_no.csv', row.names = F)
+
+### WGND
+WGND <- read.csv('WGND.csv', stringsAsFactors = F, encoding = 'UTF-8')
+WGND <- WGND[WGND$Gender == 'M' | WGND$Gender == 'F',]
+WGND$male <- 0
+WGND$female <- 0
+WGND$male <- ifelse(WGND$Gender == 'F', 0, 1)
+WGND$female <- ifelse(WGND$Gender == 'F', 1, 0)
+WGND <- WGND %>% group_by(Name) %>%
+  summarise(male = sum(male), female = sum(female))
+WGND$Gender <- 'S'
+WGND$Gender <- ifelse(WGND$male > WGND$female, 'M', ifelse(WGND$male < WGND$female, 'F', NA))
+table(WGND$Gender)
+WGND <- WGND[,c(1,4)]
+
+
+###
+Gender_no1 <- read.csv('Gender_no1.csv', stringsAsFactors = F)
+Gender_no1_list <- strsplit(Gender_no1$Name, '_')
+
+Gender_no1_first <- c()
+for(i in 1:9406){
+  Gender_no1_first <- c(Gender_no1_first, Gender_no1_list[[i]][1])
+}
+
+Gender_first = data.frame(Person_ID = Gender_no1$Person_ID, Name = Gender_no1_first)
+Gender_first$Name <- tolower(Gender_first$Name)
+
+Gender_first1 <- merge(Gender_first, WGND, all.x = T)
+Gender_first1$Gender[is.na(Gender_first1$Gender)] <- 'NULL'
+
+
+### Last도 같이 하자.
+Gender_no1_last <- c()
+for(i in 1:9406){
+  Gender_no1_last <- c(Gender_no1_last, Gender_no1_list[[i]][2])
+}
+
+Gender_last = data.frame(Person_ID = Gender_no1$Person_ID, Name = Gender_no1_last)
+Gender_last$Name <- tolower(Gender_last$Name)
+Gender_last$Name <- gsub('^ ','', Gender_last$Name)
+Gender_last1 <- merge(Gender_last, WGND, all.x = T)
+Gender_last1$Gender[is.na(Gender_last1$Gender)] <- 'NULL'
+Gender_last1_yes <- Gender_last1[Gender_last1$Gender == 'M' | Gender_last1$Gender == 'F',]
+
+
+### 합치기.
+colnames(Gender_first1)[1] <- 'First_Name'
+colnames(Gender_last1)[1] <- 'Last_Name'
+
+table(Gender_first1$Gender)
+table(Gender_last1$Gender)
+Gender_first1_no <- Gender_first1[Gender_first1$Gender == 'NULL',]
+Gender_first1_df2 <- Gender_first1[Gender_first1$Gender != 'NULL',]
+table(Gender_first1_df2$Gender)
+
+Gender_last1_yes <- Gender_last1_yes[Gender_last1_yes$Person_ID %in% Gender_first1_no$Person_ID, ]
+Gender_df2 <- rbind(Gender_first1_df2, Gender_last1_yes)
+
+Gender_first1_no <- Gender_first1_no[!(Gender_first1_no$Person_ID %in% Gender_df2$Person_ID),]
+
+### 세번째 데이터베이스
+gender_name <- read.csv('name_gender.csv', header = T)
+gender_name <- gender_name[,1:2]
+colnames(gender_name) <- c('Name', 'Gender')
+gender_name$Name <- tolower(gender_name$Name)
+
+Gender_first <- Gender_first1_no[,1:2]
+
+Gender_first2 <- merge(Gender_first, gender_name, all.x = T)
+Gender_first2$Gender <- as.character(Gender_first2$Gender)
+Gender_first2$Gender[is.na(Gender_first2$Gender)] <- 'NULL'
+
+Gender_last1_no <- Gender_last1[Gender_last1$Person_ID %in% Gender_first$Person_ID,]
+Gender_last <- Gender_last1_no[,1:2]
+
+Gender_last2 <- merge(Gender_last, gender_name, all.x = T)
+Gender_last2$Gender <- as.character(Gender_last2$Gender)
+Gender_last2$Gender[is.na(Gender_last2$Gender)] <- 'NULL'
+
+Gender_first2_df2 <- Gender_first2[Gender_first2$Gender != 'NULL',]
+Gender_last2_df2 <- Gender_last2[Gender_last2$Gender != 'NULL',]
+
+intersect(Gender_first2_df2$Person_ID, Gender_last2_df2$Person_ID)
+Gender_first2_df2[Gender_first2_df2$Person_ID %in% intersect(Gender_first2_df2$Person_ID, Gender_last2_df2$Person_ID),]
+Gender_last2_df2 <- Gender_last2_df2[!(Gender_last2_df2$Person_ID %in% intersect(Gender_first2_df2$Person_ID, Gender_last2_df2$Person_ID)),]
+
+Gender_df3 <- rbind(Gender_first2_df2, Gender_last2_df2)
+
+### 성별사전 만들기.
+Gender_df2 <- Gender_df2[,2:3]
+Gender_df3 <- Gender_df3[,2:3]
+Gender_dictionary <- rbind(data.frame(Gender_first_df), data.frame(Gender_df2), data.frame(Gender_df3))
+length(unique(Gender_dictionary$Person_ID))
+write.csv(Gender_dictionary, 'Gender_dictionary.csv', row.names = F)
+rm(Gender, Gender_df2, Gender_df3, Gender_first, Gender_first_M, GeGender_no1_last)
+rm(Gender_first1, Gender_first1_df2, gender_name, Gender_no1_list, Gender_no)
+rm(WGND, Gender_first1_no, Gender_first2, Gender_first2_df2)
+rm(inventor, inventor_gender, Inventor1, Inventor)
+rm(IPC)
+rm(Gender_last, Gender_last1, Gender_last1_no, Gender_last1_yes, Gender_last2, Gender_last2_df2)
+rm(person_id, Gender_no1, Gender1, Gender_no1_first, Gender_no1_last, i, Person_ID)
+
+Gender_dictionary <- read.csv('Gender_dictionary.csv', stringsAsFactors = F)
+Gender_no1 <- read.csv('Gender_no1(manual).csv', stringsAsFactors = F)
+Gender_no1 <- Gender_no1[,1:2]
+Gender_dictionary <- rbind(Gender_dictionary, Gender_no1)
+
+### 특허의 성별 매기기.
+Patent_gender <- read.csv('Inventor of Patent.csv', header = F, stringsAsFactors = F)
+Patent_gender[1,1] <- 45381160
+head(Patent_gender)
+colnames(Patent_gender) <- c('ID', 'Person_ID')
+Patent_gender <- merge(Patent_gender, Gender_dictionary, by = 'Person_ID', all.x = T)
+Patent_gender$Gender[is.na(Patent_gender$Gender)] <- 'None'
+table(Patent_gender$Gender)
+Patent_gender <- merge(Patent_gender, family[,1:2], by = 'ID')
+Patent_gender$Male <- 0
+Patent_gender$Female <- 0
+Patent_gender$None <- 0
+Patent_gender$Male <- ifelse(Patent_gender$Gender == 'M', 1, 0)
+Patent_gender$Female <- ifelse(Patent_gender$Gender == 'F', 1, 0)
+Patent_gender$None <- ifelse(Patent_gender$Gender == 'None', 1, 0)
+
+### 특허 수 변화.
+family$index = 1
+Patent_gender$index = 1
+Patent_trend <- family %>% group_by(ID, Year) %>%
+  summarise(index = mean(index))
+Patent_trend <- Patent_trend[Patent_trend$Year < 2017,]
+Patent_trend <- Patent_trend %>% group_by(Year) %>%
+  summarise(index = sum(index))
+write.csv(Patent_trend, 'Patent_trend.csv', row.names = F)
+
+### 여성의 참여 동향
+family <- read.csv('family size.CSV', stringsAsFactors = F)
+colnames(family)[1] <- 'ID'
+Patent_gender <- merge(Patent_gender, family[,1:2], by = 'ID')
+Patent_gender_perticipation_trend <- Patent_gender %>% group_by(Year) %>%
+  summarise(Male = sum(Male), Female = sum(Female))
+Patent_gender_perticipation_trend$sum = Patent_gender_perticipation_trend$Male + Patent_gender_perticipation_trend$Female
+Patent_gender_perticipation_trend$Male = round(Patent_gender_perticipation_trend$Male/Patent_gender_perticipation_trend$sum,2)
+Patent_gender_perticipation_trend$Female = round(Patent_gender_perticipation_trend$Female/Patent_gender_perticipation_trend$sum,2)
+Patent_gender_perticipation_trend <- Patent_gender_perticipation_trend[,1:3]
+write.csv(Patent_gender_perticipation_trend, 'Patent_gender_perticipation_trend.csv', row.names = F)
+
+### 특허의 성별 구성
+Patent_gender$Male <- 0
+Patent_gender$Female <- 0
+Patent_gender$None <- 0
+Patent_gender$Male <- ifelse(Patent_gender$Gender == 'M', 1, 0)
+Patent_gender$Female <- ifelse(Patent_gender$Gender == 'F', 1, 0)
+Patent_gender$None <- ifelse(Patent_gender$Gender == 'None', 1, 0)
+Patent_gender$index = 1
+
+Patent_gender <- Patent_gender %>% group_by(ID) %>%
+  summarise(Male = sum(Male), Female = sum(Female), None = sum(None), all = sum(index))
+table(Patent_gender$None)
+
+write.csv(Patent_gender, 'Patent_gender_assignment.csv', row.names = F)
+
+Patent_gender <- read.csv('Patent_gender_assignment.csv', stringsAsFactors = F)
+
+### Gender_only
+Patent_gender <- Patent_gender[Patent_gender$None != Patent_gender$all,]  ### 우선 성별을 전혀 모르는 특허 제거
+Patent_gender <- Patent_gender[Patent_gender$None < (0.5*Patent_gender$all),]  ### 우선 성별을 전혀 모르는 특허 제거
+
+Man <- Patent_gender[(Patent_gender$Male + Patent_gender$None) == Patent_gender$all,]
+
+Woman <- Patent_gender[(Patent_gender$Female + Patent_gender$None) == Patent_gender$all,]
+
+Mixed <- Patent_gender[Patent_gender$Male > 0 & Patent_gender$Female > 0 ,]
+
+
+write.csv(Man, 'Man.csv', row.names = F)
+write.csv(Woman, 'Woman.csv', row.names = F)
+write.csv(Mixed, 'Mixed.csv', row.names = F)
+
+
+### 단독 발명가 수
+Patent_single <- Patent_gender[Patent_gender$all == 1,]
+Man_single <- Patent_single[(Patent_single$Male + Patent_single$None) == Patent_single$all,]
+Woman_single <- Patent_single[(Patent_single$Female + Patent_single$None) == Patent_single$all,]
+length(Man_single$ID)/length(Man$ID)
+length(Woman_single$ID)/length(Woman$ID)
+
+Man_major <- Man[Man$all>1,]
+Woman_major <- Woman[Woman$all>1,]
+mean(Man_major$all)
+mean(Woman_major$all)
+mean(Mixed$all)
+
+rm(Patent_single, Man_single, Woman_single, Man_major, Woman_major)
