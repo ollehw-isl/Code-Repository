@@ -1,0 +1,136 @@
+install.packages('openxlsx')
+library(openxlsx)
+people <- read.xlsx('Person_total.xlsx')
+people1 <- subset(people, people$ID %in% unique(patent4$ID))
+liuwei1 <- people1[grep('ZHOU YIBAO', people1$person_name, ignore.case = T),]
+people2 <- merge(people1, patent4[1:3], by = 'ID')
+japen <- subset(people2, people2$Auth == 'JP')
+table(japen$year)
+japen <- japen[c(1,3,4,6,8,9)]
+japan <- japen[order(japen$person_name, japen$year),]
+hitachi <- People[grep('samsung', people2$person_name, ignore.case = T),]
+hitachi <- hitachi[order(hitachi$Auth, hitachi$year)]
+ofilm <- hitachi <- people2[grep('OUFEI', people2$person_name, ignore.case = T),]
+sort(table(people2$person_name), decreasing = T)[1:40]
+
+write.csv(patent4, 'topic_classfied.csv', row.names = F)
+table(patent4$year, patent4$topic)
+
+publn <- read.xlsx('publn.xlsx')
+colnames(publn) <- c('appln_ID', 'publn')
+patent4_publn <- merge(patent4, publn, by = 'ID')
+patent42 <- patent4
+cit <- read.xlsx('citation.xlsx')
+colnames(cit) <- c('ID', 'publn', 'docu')
+patent4_cit <- merge(patent42, cit, by = 'ID')
+patent4_cit <- subset(patent4_cit, patent4_cit$`appln ID` %in% unique(patent4$ID))
+
+patent4_cit <- patent4_cit[c(1,2,3,6,7)]
+patent4_cit1 <- merge(patent4_cit, publn, by = 'publn')
+patent4_cit1 <- patent4_cit1[c(2:6)]
+colnames(patent4_cit1)[5] <- 'citiation ID'
+patent4_cit1 <- subset(patent4_cit1, patent4_cit1$`citiation ID` %in% unique(patent4$ID))
+patent4_cit1 <- patent4_cit1[order(patent4_cit1$ID), ]
+row.names(patent4_cit1) <- NULL
+cit_topic <- patent4[c(1,6)]
+colnames(cit_topic) <- c('citiation ID', 'citation topic')
+patent4_cit1 <- merge(patent4_cit1, cit_topic, by = 'citiation ID')
+patent4_cit1 <- patent4_cit1[c(2,3,4,5,1,6)]
+patent4_cit1 <- patent4_cit1[order(patent4_cit1$topic, patent4_cit1$`citation topic`),]
+
+graph.matrix <- as.matrix(table(patent4_cit1$topic, patent4_cit1$`citation topic`))
+table(patent4_cit1$topic)
+table(patent4_cit1$`citation topic`)
+
+table(patent4$topic)
+cit_topic_length
+cit_topic_length <- c()
+for (i in 1:36){
+  cit_topic_length <- c(cit_topic_length, length(unique(patent4_cit1$ID[patent4_cit1$topic == i])))
+}
+cit1 <- merge(cit, publn, by = 'publn')
+
+past_patent4_cit1 <- subset(patent4_cit1, patent4_cit1$year %in% as.character(1990:2011))
+recent_patent4_cit1 <- subset(patent4_cit1, patent4_cit1$year %in% as.character(2012:2016))
+
+graph.matrix1 <- as.matrix(table(past_patent4_cit1$topic, past_patent4_cit1$`citation topic`))
+graph.matrix2 <- as.matrix(table(recent_patent4_cit1$topic, recent_patent4_cit1$`citation topic`))
+round(colSums(graph.matrix1)/sum(colSums(graph.matrix1)),3)*100
+round(colSums(graph.matrix2)/sum(colSums(graph.matrix2)),3)*100
+
+for(i in 1:36) {
+  graph.matrix1[i,i] = 0
+  graph.matrix2[i,i] = 0
+}
+
+
+
+library(igraph)
+#import the sample_dw_adj.csv file:
+net1=graph.adjacency(round(graph.matrix1/50),mode="directed",weighted=TRUE,diag=FALSE) #the only difference between this and the weighted network code is that mode="directed"
+
+plot.igraph(net1,vertex.label=V(net1)$name, vertex.label.color="black",edge.color="black",edge.width=E(net1)$weight, edge.arrow.size=0.2,layout=layout.circle)
+
+centr_degree(net, mode="in", normalized=T)
+
+net2=graph.adjacency(round(graph.matrix2/30),mode="directed",weighted=TRUE) #the only difference between this and the weighted network code is that mode="directed"
+plot.igraph(net2,vertex.label=V(net2)$name, vertex.label.color="black",edge.color="black",edge.width=E(net2)$weight, edge.arrow.size=0.2, layout=layout.circle)
+
+centr_degree(net1, mode="in", normalized=T)
+centr_degree(net1, mode="out", normalized=T)
+betweenness(net1, directed=T, weights=E(net1)$weight)
+betweenness(net2, directed=T, weights=NA)
+E(net1)$weight
+sort(table(People$person_name), decreasing = T)[1:30]
+People <- people2[c(1,3)]
+People$person_name[grep('Samsung', People$person_name, ignore.case = T)] <- 'Samsung'
+People$person_name[grep('Guangdong oppo ', People$person_name, ignore.case = T)] <- 'Guangdong Oppo Mobile Telecommunications Co.'
+People$person_name[grep('HITACHI ', People$person_name, ignore.case = T)] <- 'HITACHI LTD'
+People$person_name[grep('FUJITSU ', People$person_name, ignore.case = T)] <- 'FUJITSU LTD'
+People$person_name[grep('O-film', People$person_name, ignore.case = T)] <- 'O-film Tech Co.'
+People$person_name[grep('OUFEI BIOL', People$person_name, ignore.case = T)] <- 'O-film Tech Co.'
+
+People$person_name[grep('SONY ', People$person_name, ignore.case = T)] <- 'SONY'
+People$person_name[grep('NEC ', People$person_name, ignore.case = T)] <- 'NEC Co.'
+People$person_name[grep('LG', People$person_name, ignore.case = T)] <- 'LG CO.'
+People$person_name[grep('MATSUSHITA ELECTRIC', People$person_name, ignore.case = T)] <- 'MATSUSHITA ELECTRIC INDUSTRIAL Co.'
+People$person_name[grep('PANASONIC', People$person_name, ignore.case = T)] <- 'MATSUSHITA ELECTRIC INDUSTRIAL Co.'
+People$person_name[grep('IBM', People$person_name, ignore.case = T)] <- 'IBM'
+People$person_name[grep('International Business Machin', People$person_name, ignore.case = T)] <- 'IBM'
+
+
+
+
+patent_person_cit <- merge(patent4_cit1, People, by = 'ID')
+People_cit <- People
+colnames(People_cit) <- c('citiation ID', 'citation person_name')
+patent_person_cit <- merge(patent_person_cit, People_cit, by = 'citiation ID')
+
+hutiz <- People1[grep('fuJitsu', People1$person_name, ignore.case = T),]
+hutiz.id <- unique(hutiz$ID)
+hutiz.patent <- patent4[patent4$ID %in% hutiz.id,]
+table(hutiz.patent$Auth)
+sort(prop.table(table(hutiz.patent$topic)), decreasing = T)
+
+
+
+person_name <- names(sort(table(People$person_name), decreasing = T)[1:20])
+patent_person_cit1 <- subset(patent_person_cit, patent_person_cit$person_name %in% person_name)
+patent_person_cit1 <- patent_person_cit[patent_person_cit$person_name %in% person_name,]
+patent_person_cit2 <- patent_person_cit1[patent_person_cit1$`citation person_name` %in% person_name,]
+patent_person_cit2 <- subset(patent_person_cit1, patent_person_cit1$`citation person_name` %in% person_name)
+
+person.matrix <- as.matrix(table(patent_person_cit2$person_name, patent_person_cit2$`citation person_name`))
+for (i in 1:20) {
+  person.matrix[i,i] <- 0
+}
+
+net3= graph.adjacency(person.matrix,mode="directed",weighted=TRUE,diag=FALSE) #the only difference between this and the weighted network code is that mode="directed"
+
+plot.igraph(net3,vertex.label=V(net3)$name, vertex.label.color="black",edge.color="black",edge.width=E(net3)$weight/20, edge.arrow.size=E(net3)$weight/4, layout=layout.circle)
+colrs <- c("gray50", "tomato", "gold", "blue", "green")
+V(net3)$color <- colrs[]
+
+
+deg <- degree(net, mode="all")
+
