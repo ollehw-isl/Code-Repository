@@ -1,0 +1,80 @@
+# data
+german <- read.csv('German_credit.csv')
+colnames(german)
+
+# 범주형 변수 설정
+german$Checking_account <- as.factor(german$Checking_account)
+german$Credit_history <- as.factor(german$Credit_history)
+german$Purpose <- as.factor(german$Purpose)
+german$Saving_accout <- as.factor(german$Saving_accout)
+german$Present_employment <- as.factor(german$Present_employment)
+german$Personal_status___sex <- as.factor(german$Personal_status___sex)
+german$Other_debtors_guarantors <- as.factor(german$Other_debtors_guarantors)
+german$Property <- as.factor(german$Property)
+german$Other_installment_plan <- as.factor(german$Other_installment_plan)
+german$Housing <- as.factor(german$Housing)
+german$Job <- as.factor(german$Job)
+german$Telephone <- as.factor(german$Telephone)
+german$Foreign_worker <- as.factor(german$Foreign_worker)
+
+# Classification Tree
+table(german$Credit_status)
+
+library(sampling)
+stratified_sampling <- strata(german, stratanames = c("Credit_status"), size =c(300,300),
+                              method="srswor")
+
+st_data <- getdata(german, stratified_sampling)
+table(st_data$Credit_status)
+rm(stratified_sampling)
+
+library(caret)
+train <- createDataPartition(st_data$ID, p=0.7, list=FALSE)
+td <- st_data[train,]
+vd <- st_data[-train,]
+rm(st_data, train)
+
+colnames(td)
+td <- td[, -c(1,23,24,25)]
+vd <- vd[, -c(1,23,24,25)]
+
+# DT ("C50", "rpart", "CHAID")
+# C50 - Entropy
+install.packages("C50")
+library(C50)
+tree1 <- C5.0(Credit_status~., data=td, rules=TRUE)
+summary(tree1)
+treepred <- predict(tree1, vd, type = "class")
+confusionMatrix(treepred, vd$Credit_status)
+
+# CART - GINI
+library(rpart)
+tree2 <- rpart(Credit_status~., data=td, method = "class")
+summary(tree2)
+plot(tree2)
+text(tree2, use.n = TRUE, all = TRUE, cex=0.7)
+treepred <- predict(tree2, vd, type = "class")
+confusionMatrix(treepred, vd$Credit_status)
+
+# CHAID - Chi-square test
+# The CHAID package accepts only factor and ordered variable types
+install.packages("CHAID", repos="http://R-Forge.R-project.org")
+library(CHAID)
+colnames(td)
+ttd <- td[, -c(2,5,8,11,13,16,18)]
+ctrl <- chaid_control(minsplit = 20, minbucket = 5)
+tree3 <- chaid(Credit_status~., data=ttd, control = ctrl)
+print(tree3)
+plot(tree3)
+treepred <- predict(tree3, vd)
+confusionMatrix(treepred, vd$Credit_status)
+
+# Regression Tree
+library(rpart)
+tree2 <- rpart(Credit_amount~., data=td, method = "anova") # F-test
+plot(tree2)
+text(tree2, use.n = TRUE, all = TRUE, cex=0.7)
+
+
+
+
