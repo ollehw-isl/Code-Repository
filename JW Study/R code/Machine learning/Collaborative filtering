@@ -1,0 +1,20 @@
+install.packages("recommenderlab")
+library(recommenderlab)
+
+# data
+movie <- read.csv('MovieLense.csv', stringsAsFactors = FALSE)
+movie_matrix <- as(as(movie, "matrix"), 'realRatingMatrix')
+
+## User-Based Collaborative Filtering (UBCF)
+rec_UBCF <- Recommender(movie_matrix, method = 'UBCF', param = list(method = 'pearson')) # 유사도 = pearson
+who <- 1 # 첫번째 사람
+head(as(predict(rec_UBCF, movie_matrix[who, ], type = 'ratings'), 'list')[[1]])
+
+rec_UBCF <- Recommender(movie_matrix, method = 'UBCF', param = list(method = 'cosine')) # 유사도 = cosine
+as(predict(rec_UBCF, movie_matrix[who, ], type = 'topNList', n = 10), 'list')
+
+## Item Based Collaborative Filtering (IBCF)
+rec_IBCF <- Recommender(movie_matrix, method = "IBCF", param=list(method = 'pearson')) # 유사도 = pearson
+who <- 1
+head(as(predict(rec_IBCF, movie_matrix[who,], type = 'ratings'), 'list')[[1]])
+as(predict(rec_IBCF, movie_matrix[who,], type = 'topNList', n=10), 'list')
