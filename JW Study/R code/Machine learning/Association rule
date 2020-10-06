@@ -1,0 +1,30 @@
+# data
+ar <- read.csv("AR.csv", header=T, encoding = 'UTF-8-BOM')
+
+# Preprocessing
+ar$Personal_status___sex[ar$Personal_status___sex == '1'] <- 'divorced male'
+ar$Personal_status___sex[ar$Personal_status___sex == '2'] <- 'divorced female'
+ar$Personal_status___sex[ar$Personal_status___sex == '3'] <- 'single male'
+ar$Personal_status___sex[ar$Personal_status___sex == '4'] <- 'married male'
+ar$Personal_status___sex[ar$Personal_status___sex == '5'] <- 'single female'
+
+ar$Age = ifelse(ar$Age < 20, 'age 10-20',
+                ifelse(ar$Age < 30, 'age 20-30',
+                       ifelse(ar$Age < 40, 'age 30-40',
+                              ifelse(ar$Age < 50, 'age 40-50',
+                                     ifelse(ar$Age < 60, 'age 50-60',
+                                            ifelse(ar$Age < 70, 'age 60-70', 'age 70-80'))))))
+
+ar$Personal_status___sex <- as.factor(ar$Personal_status___sex)
+ar$Age <- as.factor(ar$Age)
+ar$Credit_status <- as.factor(ar$Credit_status)
+
+# rules
+library(arules)
+rules <- apriori(ar[, c(2:4)], parameter = list(supp=0.2, conf=0.2))
+inspect(rules)
+
+# Inspection
+rules <- subset(rules, subset = lift > 1) # lift > 1
+rules.sorted <- sort(rules, by="lift")
+inspect(rules.sorted)
