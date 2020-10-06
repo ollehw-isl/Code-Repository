@@ -1,0 +1,30 @@
+# Zero inflated poisson regression
+Patent_df$Topic = factor(Patent_df$Topic)
+colnames(Patent_df)
+library('pscl')
+m1 <- zeroinfl(citation ~ gender + claim + Grant_leg + 
+                 Family + IPC + Backward + invent_num + Topic +
+                 + company + hospital + INDIVIDUAL + UNIVERSITY + UNKNOWN + NONPROFIT, 
+               offset = log(Age), data = Patent_df,
+               dist = 'poisson')
+
+
+summary(m1)
+expCoef <- exp(coef((m1)))
+expCoef <- matrix(expCoef, ncol = 2)
+rownames(expCoef) <- c('Intercept', 'Family', 'genderMale', 'backward', 'invent_num', 'grant1', 
+                       'ipc_range', 'topic2', 'topic3', 'topic4', 'topic5', 'topic6', 'topic7',
+                       'topic8', 'topic9', 'topic10', 'company1', 'hospital1', 'individual',
+                       'nonprofit1', 'university1', 'unknown1')
+colnames(expCoef) <- c("Count_model","Zero_inflation_model")
+expCoef
+### MSE
+sum(m1$residuals^2)/length(m1$residuals)
+1-sum(m1$residuals^2)/sum((m1$model$citation - mean(m1$model$citation))^2)
+
+Patent_df1 = Patent_df[Patent_df$citation < 50,]
+m1 <- zeroinfl(citation ~ gender + claim + Grant_leg + 
+                 Family + IPC + Backward + invent_num + Topic +
+                 + company + hospital + INDIVIDUAL + UNIVERSITY + UNKNOWN + NONPROFIT, 
+               offset = log(Age), data = Patent_df1,
+               dist = 'poisson')
