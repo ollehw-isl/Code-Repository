@@ -1,0 +1,754 @@
+### 남성과 여성 파일 불러오기.
+Man <- read.csv('Man.csv', stringsAsFactors = F)
+Woman <- read.csv('Woman.csv', stringsAsFactors = F)
+Mixed <- read.csv('Mixed.csv', stringsAsFactors = F)
+
+### 성별 태깅 하기
+Man$Gender <- 'Male'
+Woman$Gender <- 'Female'
+Mixed$Gender <- 'Mixed'
+Man <- Man[,c(1,6)]
+Woman <- Woman[,c(1,6)]
+Mixed <- Mixed[,c(1,6)]
+
+### 연도 붙이기.
+publn <- read.csv('publn.csv', header = T, stringsAsFactors = F)
+colnames(publn)[1] <- 'ID'
+publn$appln_date <- substr(publn$appln_date, 1, 4)
+publn$appln_date <- as.numeric(publn$appln_date)
+Year <- publn %>%
+  group_by(ID) %>%
+  summarise(Year = mean(appln_date))
+Man <- merge(Man, Year)
+Woman <- merge(Woman, Year)
+Mixed <- merge(Mixed, Year)
+
+### ID 따로저장.
+Man_ID <- Man$ID
+Woman_ID <- Woman$ID
+Mixed_ID <- Mixed$ID
+
+### 합치기.
+Man$index = 1
+Woman$index = 1
+Mixed$index = 1
+Patent <- rbind(Man, Woman, Mixed)
+
+### ipc
+ipc <- read.csv('Cosmetic_ipc.csv', stringsAsFactors = F)
+ipc <- ipc[nchar(as.character(ipc$IPC)) > 9, ]
+ipc$IPC6 <- substr(ipc$IPC, 1,8)
+ipc$index = 1
+ipc <- ipc %>%
+  group_by(ID, IPC6) %>%
+  summarise(index = mean(index))
+length(unique(ipc$IPC6))
+man_ipc <- ipc[ipc$ID %in% Man_ID, ]
+woman_ipc <- ipc[ipc$ID %in% Woman_ID, ]
+mixed_ipc <- ipc[ipc$ID %in% Mixed_ID, ]
+
+
+length(unique(man_ipc$IPC6))
+length(unique(woman_ipc$IPC6))
+length(unique(mixed_ipc$IPC6))
+
+
+sort(table(man_ipc$IPC6), decreasing = T)[1:10]/length(Man_ID)
+sort(table(woman_ipc$IPC6), decreasing = T)[1:10]/length(Woman_ID)
+sort(table(mixed_ipc$IPC6), decreasing = T)[1:10]/length(Mixed_ID)
+
+
+### 고유한 ipc6자리 개수 추가하기.
+man_ipc_count <- man_ipc %>% group_by(ID) %>%
+  summarise(IPC_count = sum(index))
+woman_ipc_count <- woman_ipc %>% group_by(ID) %>%
+  summarise(IPC_count = sum(index))
+mixed_ipc_count <- mixed_ipc %>% group_by(ID) %>%
+  summarise(IPC_count = sum(index))
+
+
+### 청구항수.
+publn <- read.csv('publn.csv', header = T)
+colnames(publn)[1] <- 'ID'
+publn <- publn[publn$grant>0, ]
+publn <- publn[publn$first_grant>0, ]
+
+publn <- merge(publn, Year, by = 'ID')
+
+man_publn <- publn[publn$ID %in% Man_ID, ]
+woman_publn <- publn[publn$ID %in% Woman_ID, ]
+mixed_publn <- publn[publn$ID %in% Mixed_ID, ]
+man_publn$gender = 'Male'
+woman_publn$gender = 'Female'
+mixed_publn$gender = 'Mixed'
+publn <- rbind(man_publn, woman_publn, mixed_publn)
+publn$gender <- factor(publn$gender)
+table(publn$gender)
+summary(aov(claim ~ gender, publn))
+mean(man_publn$claim)
+mean(woman_publn$claim)
+mean(mixed_publn$claim)
+t.test(man_publn$claim, woman_publn$claim)
+t.test(woman_publn$claim, mixed_publn$claim)
+t.test(man_publn$claim, mixed_publn$claim)
+
+
+
+anova(man_publn$claim, woman_publn$claim, mixed_publn$claim)
+
+man_claim_trend <- man_publn %>%
+  group_by(Year) %>%
+  summarise(claim = mean(claim))
+
+woman_claim_trend <- woman_publn %>%
+  group_by(Year) %>%
+  summarise(claim = mean(claim))
+
+mixed_claim_trend <- mixed_publn %>%
+  group_by(Year) %>%
+  summarise(claim = mean(claim))
+man_claim_trend$Gender = 'Male'
+woman_claim_trend$Gender = 'Female'
+mixed_claim_trend$Gender = 'Mixed'
+claim_trend <- rbind(man_claim_trend, woman_claim_trend, mixed_claim_trend)
+write.csv(claim_trend, 'claim_trend.csv', row.names = F)
+rm(man_claim_trend, woman_claim_trend, mixed_claim_trend, claim_trend)
+
+
+
+### Family size
+family <- read.csv('family size.csv', header = T)
+colnames(family)[1] <- 'ID'
+family_man <- family[family$ID %in% Man_ID,]
+family_woman <- family[family$ID %in% Woman_ID,]
+family_mixed <- family[family$ID %in% Mixed_ID,]
+
+family_man$gender = 'Male'
+family_woman$gender = 'Female'
+family_mixed$gender = 'Mixed'
+family <- rbind(family_man, family_woman, family_mixed)
+family <- family %>%
+  group_by(gender ,Family_ID) %>%
+  summarise(Family = mean(Family))
+family_man <- family[family$gender == 'Male',]
+family_woman <- family[family$gender == 'Female',]
+
+t.test(family_man$Family, family_woman$Family)
+t.test(family_mixed$Family, family_woman$Family)
+t.test(family_man$Family, family_mixed$Family)
+
+
+
+family_gender <- family %>%
+  group_by(gender) %>%
+  summarise(Family = mean(Family))
+
+family$gender <- factor(family$gender)
+summary(aov(Family ~ gender, family))
+
+
+boxplot(Family ~ gender, data = family, col = c('red', 'blue', 'green'), ylab = 'Family size')
+summary(family[family$gender == 'Male',])
+summary(family[family$gender == 'Female',])
+summary(family[family$gender == 'Mixed',])
+
+
+
+Man1_Patent <- merge(Man1_Patent, family[,c(1,3,4)])
+Woman1_Patent <- merge(Woman1_Patent, family[,c(1,3,4)])
+rm(family_gender, family_man, family_woman)
+
+### Backward citation
+backward <- read.csv('backward.csv', header = F)
+colnames(backward) <- c('ID', 'cited_patent', 'cited_docu')
+backward$ID[1] <- 57296140
+
+backward_patent <- backward[backward$cited_docu == 0, ]
+backward_patent <- backward_patent[1:2]
+backward_patent$index = 1
+backward_patent1 <- backward_patent %>%
+  group_by(ID, cited_patent) %>%
+  summarise(index = sum(index))
+backward_patent <- backward_patent1[1:2]
+rm(backward_patent1)
+backward_patent <- backward_patent[backward_patent$cited_patent != 0,]
+backward_patent <- backward_patent[backward_patent$cited_patent != 'NULL',]
+backward_patent$index = 1
+backward_patent <- backward_patent %>%
+  group_by(ID) %>%
+  summarise(backward = sum(index))
+
+man_backward <- data.frame(ID = Man_ID)
+man_backward <- merge(man_backward, backward_patent, by = 'ID', all.x = T)
+woman_backward <- data.frame(ID = Woman_ID)
+woman_backward <- merge(woman_backward, backward_patent, by = 'ID', all.x = T)
+mixed_backward <- data.frame(ID = Mixed_ID)
+mixed_backward <- merge(mixed_backward, backward_patent, by = 'ID', all.x = T)
+
+
+man_backward$backward <- ifelse(is.na(man_backward$backward),0, man_backward$backward)
+woman_backward$backward <- ifelse(is.na(woman_backward$backward),0, woman_backward$backward)
+mixed_backward$backward <- ifelse(is.na(mixed_backward$backward),0, mixed_backward$backward)
+
+backward_docu <- backward[backward$cited_docu != 0, ]
+backward_docu <- backward_docu[backward_docu$cited_docu != 'NULL', ]
+backward_docu$index = 1
+backward_docu <- backward_docu %>%
+  group_by(ID, cited_docu) %>%
+  summarise(index = sum(index))
+backward_docu$index = 1
+backward_docu <- backward_docu %>%
+  group_by(ID) %>%
+  summarise(backward_docu = sum(index))
+
+
+
+man_backward <- merge(man_backward, backward_docu, by = 'ID', all.x = T)
+woman_backward <- merge(woman_backward, backward_docu, by = 'ID', all.x = T)
+mixed_backward <- merge(mixed_backward, backward_docu, by = 'ID', all.x = T)
+
+man_backward$backward_docu <- ifelse(is.na(man_backward$backward_docu),0, man_backward$backward_docu)
+woman_backward$backward_docu <- ifelse(is.na(woman_backward$backward_docu),0, woman_backward$backward_docu)
+mixed_backward$backward_docu <- ifelse(is.na(mixed_backward$backward_docu),0, mixed_backward$backward_docu)
+
+man_backward$back <- man_backward$backward + man_backward$backward_docu
+woman_backward$back <- woman_backward$backward + woman_backward$backward_docu
+mixed_backward$back <- mixed_backward$backward + mixed_backward$backward_docu
+
+mean(man_backward$back)
+mean(woman_backward$back)
+mean(mixed_backward$back)
+
+mean(man_backward$backward_docu)
+mean(woman_backward$backward_docu)
+mean(mixed_backward$backward_docu)
+
+
+man_backward <- merge(man_backward, Year, by = 'ID', all.x = T)
+woman_backward <- merge(woman_backward, Year, by = 'ID', all.x = T)
+mixed_backward <- merge(mixed_backward, Year, by = 'ID', all.x = T)
+
+man_backward_trend <- man_backward %>%
+  group_by(Year) %>%
+  summarise(backward = mean(back))
+woman_backward_trend <- woman_backward %>%
+  group_by(Year) %>%
+  summarise(backward = mean(back))
+mixed_backward_trend <- mixed_backward %>%
+  group_by(Year) %>%
+  summarise(backward = mean(back))
+man_backward_trend$Gender = 'Male'
+woman_backward_trend$Gender = 'Female'
+mixed_backward_trend$Gender = 'Mixed'
+backward_trend <- rbind(man_backward_trend, woman_backward_trend, mixed_backward_trend)
+write.csv(backward_trend, 'backward_trend.csv', row.names = F)
+
+rm(man_backward_trend, woman_backward_trend, mixed_backward_trend, backward_trend)
+### Z-score
+### Z-score
+ipc <- rbind(man_ipc, woman_ipc, mixed_ipc)
+z_score_input1 <- ipc[,1:2]
+z_score_input2 <- Year[Year$ID %in% c(Man_ID, Woman_ID, Mixed_ID),]
+colnames(z_score_input1) <- c('appln_id', 'IPC')
+colnames(z_score_input2) <- c('appln_id', 'appln_filing_year')
+
+write.csv(z_score_input1, 'z_score_input1.csv', row.names = F)
+write.csv(z_score_input2, 'z_score_input2.csv', row.names = F)
+length(unique(z_score_input1$appln_id))
+
+z_score <- read.csv('z-score_only.csv', header = T, stringsAsFactors = F)
+colnames(z_score) <- c('ID', 'median', 'min', 'Year')
+str(z_score)
+z_score$Year <- factor(z_score$Year)
+
+z_score$gender <- 'Male'
+z_score$gender[z_score$ID %in% Woman_ID] <- 'Female'
+z_score$gender[z_score$ID %in% Mixed_ID] <- 'Mixed'
+
+z_score$gender <- factor(z_score$gender)
+mean(z_score$median[z_score$gender=='Male'])
+mean(z_score$median[z_score$gender=='Female'])
+mean(z_score$median[z_score$gender=='Mixed'])
+
+mean(z_score$min[z_score$gender=='Male'])
+mean(z_score$min[z_score$gender=='Female'])
+mean(z_score$min[z_score$gender=='Mixed'])
+
+z_score_year_trend <- z_score %>%
+  group_by(gender, Year) %>%
+  summarise(median = mean(median), min = mean(min))
+
+
+### Text Mining
+abstract <- read.csv('abstract1.csv', header = T, stringsAsFactors = F)
+abstract <- abstract[!(abstract$Abstract == 'NULL'),]
+
+# Install
+#install.packages("tm")  # for text mining
+#install.packages("SnowballC") # for text stemming
+#install.packages("wordcloud") # word-cloud generator 
+#nstall.packages("RColorBrewer") # color palettes
+# Load
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+### 데이터 불러오기.
+woman_abstract <- abstract[abstract$ID %in% Woman_ID,]
+man_abstract <- abstract[abstract$ID %in% Man_ID,]
+mixed_abstract <- abstract[abstract$ID %in% Mixed_ID,]
+
+woman_abstract$gender <- 'Female'
+man_abstract$gender <- 'Male'
+mixed_abstract$gender <- 'Mixed'
+
+only_gender <- rbind(woman_abstract, man_abstract, mixed_abstract)
+only_gender <- only_gender[c(1,4,3)]
+only_gender$gender <- factor(only_gender$gender)
+
+only_gender <- only_gender[-grep('NULL', only_gender$Abstract), ]
+only_gender <- only_gender[order(only_gender$gender, only_gender$ID), ]
+rownames(only_gender) <- NULL
+only_gender$Abstract <- gsub('MROW>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MO>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MI>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MATH>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MTABLE>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MSUB>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MFRAC>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MTD>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MN>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MSTYLE>', ' ', only_gender$Abstract, ignore.case = T)
+only_gender$Abstract <- gsub('MTEXT>', ' ', only_gender$Abstract, ignore.case = T)
+
+only_gender$Abstract <- gsub(' [[:digit:]]', ' ', only_gender$Abstract)
+only_gender$Abstract <- gsub('-', 'hYpEr', only_gender$Abstract)
+only_gender$Abstract <- gsub('[[:punct:]]', ' ', only_gender$Abstract)
+only_gender$Abstract <- gsub('hYpEr', '-', only_gender$Abstract)
+only_gender$Abstract <- gsub('^-', '', only_gender$Abstract)
+only_gender$Abstract <- gsub(' -', ' ', only_gender$Abstract)
+only_gender$Abstract <- gsub(' [[:digit:]]', ' ', only_gender$Abstract)
+
+forward <- read.csv('forward_count.csv')
+library(dplyr)
+
+### 중복된 abstract 제거하기.
+only_gender1 <- merge(only_gender, family[c(1,3,4)], by = 'ID')
+only_gender1 <- merge(only_gender1, publn[c(1,3,6,8)], by = 'ID', all.x = T)
+only_gender1 <- merge(only_gender1, forward, by = 'ID', all.x = T)
+only_gender1$index <- 1:length(only_gender1$ID)
+only_gender1$claim <- ifelse(is.na(only_gender1$claim),0,only_gender1$claim)
+only_gender1$citation <- ifelse(is.na(only_gender1$citation),0, only_gender1$citation)
+only_gender2 <- only_gender1 %>%
+  group_by(Family_ID) %>%
+  summarise(claim = max(claim))
+only_gender3 <- merge(only_gender2, only_gender1, by = c('Family_ID', 'claim'))
+only_gender4 <- only_gender3 %>%
+  group_by(Family_ID) %>%
+  summarise(citation = max(citation))
+only_gender5 <- merge(only_gender4, only_gender3, by = c('Family_ID', 'citation'))
+only_gender6 <- only_gender5 %>%
+  group_by(Family_ID) %>%
+  summarise(index = max(index))
+only_gender7 <- merge(only_gender6, only_gender3, by = c('Family_ID', 'index'))
+only_gender <- only_gender7
+rm(only_gender1, only_gender2, only_gender3, only_gender4, only_gender5, only_gender6, only_gender7)
+only_gender <- merge(only_gender, Year, by = 'ID')
+
+only_gender_female <- only_gender[only_gender$gender == 'Female', ]
+only_gender_male <- only_gender[only_gender$gender == 'Male', ]
+only_gender_mixed <- only_gender[only_gender$gender == 'Mixed', ]
+
+### 여성
+docs_female <- Corpus(VectorSource(only_gender_female$Abstract))
+# Convert the text to lower case
+docs_female <- tm_map(docs_female, content_transformer(tolower))
+# Remove english common stopwords
+docs_female <- tm_map(docs_female, removeWords, stopwords("english"))
+# Remove english customer stopwords
+custom_stopword <- c('least', 'one', 'component', 'pigment', 'optionally', 'product', 'products', 'process', 'invention', 'compositions',
+                     'composition', 'methods', 'method', 'group', 'sub', 'first', 'second', 'layer', 'groups', 'compound', 'compounds', 'according',
+                     'solution', 'agent', 'parts', 'concentrate', 'part', 'disclosed', 'agents', 'effective', 'can', 'extract', 'outer', 'particles', 
+                     'date', 'sec', '97', 'filed', 'comprising', 'phase', 'wherein', 'includes', 'may', 'used', 'useful',
+                     'thereof', 'derivatives', 'relates', 'formula', 'formulation', 'also', 'present', 'represents', 'containing', 'sep', 'jun', '96', 'aug', '98',
+                     'less', 'use', 'activity', 'score', 'inhibiting', 'said', 'form', 'material', 'sup', 'weight', 'consisting', 'cosmetic', 'cosmetics', 'selected',
+                     'provides', 'using', 'including', 'treating', 'acceptable', 'comprises', 'application',
+                     'combination', 'provides', 'particular', 'system', 'preferably', 'applied', 'amount', 
+                     'medium', 'include', 'novel', 'high', 'preparation', 'particularly', 'applying', 'chosen',
+                     'provided', 'contains', 'cosmetically', 'suitable', 'total', 'applying', 'chosen', 'human', 'well', 'described',
+                     'two', 'greater', 'active', 'device', 'provide', 'improved',
+                     'image', 'comprise')
+docs_female <- tm_map(docs_female, removeWords, custom_stopword)
+
+
+
+dtm_female <- TermDocumentMatrix(docs_female)
+m <- as.matrix(dtm_female)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=25, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+### 남성
+
+docs_male <- Corpus(VectorSource(only_gender_male$Abstract))
+# Convert the text to lower case
+docs_male <- tm_map(docs_male, content_transformer(tolower))
+# Remove english common stopwords
+docs_male <- tm_map(docs_male, removeWords, stopwords("english"))
+# Remove english customer stopwords
+docs_male <- tm_map(docs_male, removeWords, custom_stopword)
+
+
+
+dtm_male <- TermDocumentMatrix(docs_male)
+m <- as.matrix(dtm_male)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=25, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"),
+          main = 'Male Patent')
+
+
+
+### skin, hair 제품은 빼고 해보자.
+
+
+not_skin_hair_ID <- woman_ipc6$ID[c(grep('A61Q  19', woman_ipc6$IPC6), grep('A61Q   5', woman_ipc6$IPC6))]
+not_skin_hair_ID <- setdiff(unique(woman_ipc6$ID), not_skin_hair_ID)
+
+only_gender_female_not <- only_gender_female[only_gender_female$ID %in% not_skin_hair_ID,]
+length(unique(only_gender_female_not$ID))
+docs_female <- Corpus(VectorSource(only_gender_female_not$Abstract))
+# Convert the text to lower case
+docs_female <- tm_map(docs_female, content_transformer(tolower))
+# Remove english common stopwords
+docs_female <- tm_map(docs_female, removeWords, stopwords("english"))
+docs_female <- tm_map(docs_female, removeWords, custom_stopword)
+
+
+
+dtm_female <- TermDocumentMatrix(docs_female)
+m <- as.matrix(dtm_female)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=25, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+### 남성
+not_skin_hair_ID <- man_ipc6$ID[c(grep('A61Q  19', man_ipc6$IPC6), grep('A61Q   5', man_ipc6$IPC6))]
+not_skin_hair_ID <- setdiff(unique(man_ipc6$ID), not_skin_hair_ID)
+
+only_gender_male_not <- only_gender_male[only_gender_male$ID %in% not_skin_hair_ID,]
+
+docs_male <- Corpus(VectorSource(only_gender_male_not$Abstract))
+# Convert the text to lower case
+docs_male <- tm_map(docs_male, content_transformer(tolower))
+# Remove english common stopwords
+docs_male <- tm_map(docs_male, removeWords, stopwords("english"))
+# Remove english customer stopwords
+docs_male <- tm_map(docs_male, removeWords, custom_stopword)
+
+
+
+dtm_male <- TermDocumentMatrix(docs_male)
+m <- as.matrix(dtm_male)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=25, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+length(unique(only_gender$Abstract))
+
+
+### TF-IDF
+only_gender_token <- only_gender %>%
+  unnest_tokens(word, Abstract) %>%
+  anti_join(stop_words)
+
+### TF-IDF
+### Token
+library(tidyr)
+library(stringr)
+library(tidytext)
+
+only_token <- only_gender %>%
+  unnest_tokens(word, Abstract) %>%
+  anti_join(stop_words)
+
+only_token <- only_token[!(only_token$word %in% custom_stopword),]
+only_token$gender <- as.character(only_token$gender)
+only_token$gender[only_token$gender == 'F'] <- 'Female'
+only_token$gender[only_token$gender == 'M'] <- 'Male'
+only_token$gender <- as.factor(only_token$gender)
+
+library(ggplot2)
+
+
+x<- only_token %>%
+  count(gender, word, sort = T) %>%
+  bind_tf_idf(word, gender, n) %>%
+  group_by(gender) %>%
+  top_n(5) %>%
+  ungroup %>%
+  mutate(word = reorder(word, tf_idf))
+
+x <- write.csv(x, 'tf-idf_only.csv', row.names = F)
+library(ggplot2)
+only_token %>%
+  count(gender, word, sort = T) %>%
+  bind_tf_idf(word, gender, n) %>%
+  group_by(gender) %>%
+  top_n(10) %>%
+  ungroup %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = gender)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~gender, scales = 'free') +
+  coord_flip()
+
+
+r1r2 <- abstract[grep('r1', abstract$Abstract, ignore.case = T),]
+
+### STM
+library(stm)
+library(quanteda)
+str(only_gender)
+only_gender <- only_gender[,-c(2,3,4,7:12)]
+only_gender <- merge(only_gender, Year)
+only_gender$Year <- as.numeric(only_gender$Year)
+write.csv(only_gender, 'only_gender.csv', row.names = F)
+custom_stopword <- c('least', 'one', 'component', 'pigment', 'optionally', 'product', 'products', 'process', 'invention', 'compositions',
+                     'composition', 'methods', 'method', 'group', 'sub', 'first', 'second', 'layer', 'groups', 'compound', 'compounds', 'according',
+                     'solution', 'agent', 'parts', 'concentrate', 'part', 'disclosed', 'agents', 'effective', 'can', 'extract', 'outer', 'particles', 
+                     'date', 'sec', '97', 'filed', 'comprising', 'phase', 'wherein', 'includes', 'may', 'used', 'useful',
+                     'thereof', 'derivatives', 'relates', 'formula', 'formulation', 'also', 'present', 'represents', 'containing', 'sep', 'jun', '96', 'aug', '98',
+                     'less', 'use', 'activity', 'score', 'inhibiting', 'said', 'form', 'material', 'sup', 'weight', 'consisting', 'cosmetic', 'cosmetics', 'selected',
+                     'provides', 'using', 'including', 'treating', 'acceptable', 'comprises', 'application',
+                     'combination', 'provides', 'particular', 'system', 'preferably', 'applied', 'amount', 
+                     'medium', 'include', 'novel', 'high', 'preparation', 'particularly', 'applying', 'chosen',
+                     'provided', 'contains', 'cosmetically', 'suitable', 'total', 'applying', 'chosen', 'human', 'well', 'described',
+                     'two', 'greater', 'active', 'device', 'provide', 'improved',
+                     'image', 'comprise', 'insults', 'contrast', 'notes', 'conductive', 'infrared', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6',
+                     'r7', 'r8', 'r9', 'r10', '-x', 'binds', 'growth', 'us93', '95a', 'ep97', 'wo97', 'fr93', '97a', '95', '93', '94', 
+                     'received', 'opening', 'target', 'matrix', 'particle', 'size', 'seq', 'id', 'pct', 'pub', 'mar', 'feb', 'dec','apr', 'oct',
+                     'nov', '88', 'us95', 'wo88', '97the', 'certain', 'mass', 'topically', 'c3-8', 'c5-c6',
+                     'c8-c22', 'production', 'obtained', 'producing', 'feed', '0-400', 'shown', 'loss', 'c1', 'administering', 'integer', 
+                     'materials', 'acid', 'atoms', 'atom', 'fatty', 'ester', 'esters', 'amino', 'acids', 'glycol', 'carboxylic', 'propylene', 
+                     'ascorbic', 'ethoxylated', 'alkyl', 'carbon', 'hydrogen', 'radical', 'substituted', 'branched', 'independently', 'represented',
+                     'alkenyl', '-c12alkyl', 'c2-4', 'ch-' ,'r1o', 'so3h', 'variables', 'mixture', 'salt', '05-0', 'oxide', 
+                     'polymer', 'oxidation', 'surface', 'substrate', 'portion', 'adhesive', 'liquid', 'container', 'article', 'gas', 'away', 'access', 'discharged',
+                     'end', 'corresponding', 'description', 'member', '-line', '-line-formulae', 'formulae', 'ep96', 'tail', 'lead', 'area', 'stem', 'entry', 'aging', 
+                     'general', 'ii', 'unsaturated', 'linear', 'saturated', 'hydrocarbon', 'number', 'denotes', 'halogen', 'alkoxy', 'represent', 'aryl', 'oh', 'phenyl', 
+                     '-x', 'r13', 'r12', 'ch2b', 'x3', 'r11', 'om', 'ch2', 'represent', 'overcomes', 'film', '-c4-', 'delivery, formulations', 'properties', 'time', 'applications', 'coding', 'constructs', 'encoded', 'play',
+                     'nucleic', 'ch', 'ch3', '-c12', '91', 'reaction' ,'methyl', 'lower', 'metal', 'following', 'different', 'cycloalkyl', 'unsubstituted', 'o-', 'aralkyl', 'alipatic', 
+                     'within', 'substance', 'contact', 'bottom', 'edges', 'chambers', 'wt', 'ph', 'sodium', 'calcium', 'aliphatic', 'hydroxyl', 'chain' ,'salts', 'derivative', 'hydroxy', 'ring',
+                     'moiety', 'cyclic', '98a', 'ph', 'amine', '-c6', 'o-', 'denote', 'nitrogen', 'ammonium', 'sodium', 'calcium', 'silica', 'precipitated', 
+                     'magnesium', 'silicate', 'calcium', '-c22', '-c6-', 'alkylaryl', 'alkynyl', 'alk', 'admantane', 'delivery', 'release', '-45', '-di', '08', '98a', 'ingredients', 'percent', 'based', 'mixtures', 'preparing','nm',
+                     'ingredient', 'ethyl', 'bond', 'temperature', 'aluminum', 'ratio', 'alkali', 'complex', 'low', 'stable', 'preparations', 'formulations', 'thereofan', 'ideally',
+                     'reducing', 'bites', 'substances', 'components', 'systems', 'solutions', 'zinc', 'range', 'average', 'zirconium', 
+                     'diameter', 'composite', 'mu', 'na2o', 'bet', 'zirconyl', 'oxygen', 'together', 'structure', '')
+
+
+processed6 <- textProcessor(only_gender$Abstract, metadata = only_gender, removenumbers = F, removepunctuation = F,  stem = F, wordLengths = c(2,Inf), customstopwords = custom_stopword)
+out6 <- prepDocuments(processed6$documents, processed6$vocab,
+                      processed6$meta, lower.thresh = 10)
+levels(out6$meta$Year)
+levels(out6$meta$gender)
+
+only_gender_stm43_11 <- stm(documents = out6$documents, vocab = out6$vocab,K = 11, prevalence =~ gender + s(Year), data = out6$meta,init.type = "Spectral", seed = 15213)
+
+storage6 <- searchK(out6$documents, out6$vocab, K = c(6,7,8,9,10,11,12,13),
+                    prevalence =~ gender + s(Year), data = out6$meta)
+plot(storage6)
+storage6$results
+
+labelTopics(only_gender_stm43_11, n = 7)
+
+### topic 할당.
+topic_dt <- make.dt(only_gender_stm43_11, meta = out6$meta)
+topic_dt$Topic = 0
+for(i in 1:length(topic_dt$Topic1)){
+  index <- which(topic_dt[i,] == max(topic_dt[i,2:12]))
+  topic_dt$Topic[i] = index-1
+}
+
+### topic 비율
+topic_dt <- topic_dt[,13:17]
+
+topic_num <- table(topic_dt$Topic)
+topic_num <- as.vector(topic_num)
+
+topic_proportion <- data.frame(Proportion = round(topic_num/sum(topic_num),2), Topic = 1:11)
+write.csv(topic_proportion, 'topic_proportion.csv', row.names = F)
+
+### 
+
+
+only_topic <- c('Perfume Related Products', 'Nail Related Products',
+                'UV Related Products',
+                'Moisture Related Products',
+                'Teeth Related Products',
+                'Hair Care Related Products',
+                'Surfactant',
+                'Skin Care Related Products',
+                'Medical Related Products for Skin',
+                'Dye')
+
+
+only_gender_content_stm43 <- stm(documents = out6$documents, vocab = out6$vocab,K = 10, prevalence =~ gender + s(Year), data = out6$meta,init.type = "Spectral", seed = 15213)
+labelTopics(only_gender_content_stm43, n = 7)
+
+par(bty="n",col="grey40",lwd=5, font = 2, cex = 1.5)
+plot(only_gender_stm43_11, type="summary", xlim=c(0,.4), custom.labels = c('Perfume Related Products',
+                                                                        'Nail Related Products',
+                                                                        'Powder Related Products',
+                                                                        'UV Protection Products',
+                                                                        'Teeth Related Products',
+                                                                        'Skin trouble care Products',
+                                                                        'Teeth Whitening Related Products ',
+                                                                        'Hair dye Products',
+                                                                        'Hair care related Products',
+                                                                        'Oil related Products',
+                                                                        'Natural Material Related Products'))
+
+only_topic <- c('Perfume Related Products',
+                'Nail Related Products',
+                'Powder Related Products',
+                'UV Protection Products',
+                'Teeth Related Products',
+                'Skin trouble care Products',
+                'Teeth Whitening Related Products ',
+                'Hair dye Products',
+                'Hair care related Products',
+                'Oil related Products',
+                'Natural Material Related Products')
+
+prep <- estimateEffect(1:11 ~ gender + s(Year), stmobj = only_gender_stm43_11, metadata = out6$meta, uncertainty = 'Global')
+prep_gender <- estimateEffect(1:11 ~ gender, stmobj = only_gender_stm43_11, metadata = out6$meta, uncertainty = 'Global')
+
+
+par(mfrow = c(3, 4))
+par(bty="o",col="grey40",lwd=1, font = 2, cex = 1)
+plot(prep_gender, covariate="gender", topics=1, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 1', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=2, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 2', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=3, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 3', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=4, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 4', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=5, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 5', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=6, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 6', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=7, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 7', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=8, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 8', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=9, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 9', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=10, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 10', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+plot(prep_gender, covariate="gender", topics=11, model=only_gender_stm43_11, 
+     method="pointestimate", main = 'Topic 11', labeltype ="custom", custom.labels = c('Male', 'Mixed', 'Female'))
+
+
+
+summary(prep, topic = 7)
+
+prep_gender$parameters
+
+### 연도별 추세.
+plot(prep, "Year", method = "continuous", topics = 1,
+     model = z, printlegend = FALSE, xaxt = "n", xlab = "Year")
+axis(1,1970:2016)
+
+### content
+only_Content <- stm(out6$documents, out6$vocab, K = 10,
+                    prevalence =~ gender + s(Year), content =~ gender,
+                    data = out6$meta, init.type = "Spectral")
+plot(only_Content, type = "perspectives", topics = 1)
+
+### interaction
+only_Interaction <- stm(out6$documents, out6$vocab, K = 11,
+                        prevalence =~ gender * Year,
+                        data = out6$meta, init.type = "Spectral")
+
+
+prep_interaction <- estimateEffect(c(10) ~ gender * Year, only_Interaction, meta=out6$meta, uncertainty="None")
+summary(prep_interaction)
+
+plot(prep_interaction, covariate = "Year", model = only_Interaction,
+     method = "continuous", xlab = "Year", moderator = "gender",
+     moderator.value = "Male", linecol = "blue", ylim = c(0, .25),
+     printlegend = F)
+par(new=T)
+plot(prep_interaction, covariate = "Year", model = only_Interaction,
+     method = "continuous", xlab = "Year", moderator = "gender",
+     moderator.value = "Female", linecol = "red", ylim = c(0, .25),
+     printlegend = F)
+par(new=T)
+plot(prep_interaction, covariate = "Year", model = only_Interaction,
+     method = "continuous", xlab = "Year", moderator = "gender",
+     moderator.value = "Mixed", linecol = "green", ylim = c(0, .25),
+     printlegend = F)
+legend("topright",legend=c("Republican","Democratic","General"),col=c("red","blue","green"),
+       lty=1) # Add the legend.
+summary(prep_interaction)
+male_regression <- function(x) {
+  return(0.062333 + 0.0029935*x)
+}
+male_regression <- male_regression(1:47)
+female_regression <- function(x) {
+  return(0.06856 + 0.003178*x)
+}
+female_regression <- female_regression(1:47)
+mixed_regression <- function(x) {
+  return(0.05727 + 0.00320722*x)
+}
+mixed_regression <- mixed_regression(1:47)
+
+regression <- data.frame(Year = rep(1970:2016,3), Topic6 = c(male_regression,female_regression,mixed_regression),
+                         Gender = rep(c('Male','Female','Mixed'), each = 47))
+
+
+
+male_regression <- function(x) {
+  return(0.0777169 + 0.0006127*x)
+}
+male_regression <- male_regression(1:47)
+female_regression <- function(x) {
+  return(0.0930603 + 0.0013869*x)
+}
+female_regression <- female_regression(1:47)
+mixed_regression <- function(x) {
+  return(0.1348822 - 0.0000797*x)
+}
+mixed_regression <- mixed_regression(1:47)
+regression1 <- data.frame(Year = rep(1970:2016,3), Topic10 = c(male_regression,female_regression,mixed_regression),
+                         Gender = rep(c('Male','Female','Mixed'), each = 47))
+
+
+
+regression <- merge(regression, regression1, by = c('Year','Gender'))
+write.csv(regression, 'regression2.csv', row.names = F)
+
+
