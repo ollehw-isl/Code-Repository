@@ -1,0 +1,191 @@
+## survival analysis
+### life cycle
+library(openxlsx)
+library(dplyr)
+life <- read.xlsx('expire.xlsx')
+life$index = 1
+life$lecg_descr[life$lecg_descr == 'Undefined'] <- 'Lapse (non payment of fees)'
+life <- life %>%
+  group_by(ID, event_publn_date, lecg_descr) %>%
+  summarise(index = mean(index))
+
+life$lecg_descr <- factor(life$lecg_descr)
+summary(life$lecg_descr)
+
+life <- life[life$ID %in% c(Man_ID, Woman_ID, Mixed_ID), ]
+
+life$lecg_descr <- factor(life$lecg_descr)
+summary(life$lecg_descr)
+
+life <- life %>%
+  group_by(ID, lecg_descr) %>%
+  summarise(event_publn_date = max(event_publn_date))
+
+life$event_publn_date <- as.Date(life$event_publn_date, origin = '1899-12-30')
+life <- merge(life, publn[c(1,3)], by = 'ID')
+life_publn <- merge(life, publn[c(1,3)], by = 'ID')
+life$event_publn_date[life$lecg_descr == 'Reinstatement / Restoration'] = life$event_publn_date[life$lecg_descr == 'Reinstatement / Restoration'] + 1 
+
+##
+
+life <- life[order(life$event_publn_date), ]
+row.names(life) <- NULL
+life$index <- 1:length(life$ID)
+life1 <- life %>%
+  group_by(ID, appln_date) %>%
+  summarise(index = max(index))
+
+life <- merge(life1, life, by = c('ID', 'appln_date', 'index'))
+summary(life$lecg_descr)
+life$life <- as.integer(difftime(life$event_publn_date, life$appln_date, units = 'day'))
+life$lecg_descr <- factor(life$lecg_descr)
+
+lapse = life[life$lecg_descr == 'Lapse (non payment of fees)',] 
+Extension = life[life$lecg_descr == 'Term Extension of Rights (e.g. SPCs)',] 
+Withdrawal = life[life$lecg_descr == 'Withdrawal, Refusal, etc.',] 
+
+### dataframe 생성.
+gender_life = Patent_df_one_hot
+gender_life = merge(gender_life, publn[,c(1,3)])
+gender_life$life = NA
+gender_life$survival = 0
+
+# lapse and withdrawal
+gender_life_lapse = gender_life[gender_life$ID %in% c(lapse$ID, Withdrawal$ID),]
+gender_life_lapse = merge(gender_life_lapse, rbind(lapse[,c(1,6)], Withdrawal[,c(1,6)]))
+
+# extension
+gender_life_extension = gender_life[gender_life$ID %in% Extension$ID,]
+gender_life_extension$life = as.integer(difftime(as.Date('2018-01-01'), gender_life_extension$appln_date, units = 'day'))
+gender_life_extension$life = ifelse(gender_life_extension$life>9490, 9490, gender_life_extension$life)
+gender_life_extension$survival[gender_life_extension$life<9490] = 1
+
+# no
+gender_life_no_legal = gender_life[!(gender_life$ID %in% c(lapse$ID, Withdrawal$ID, Extension$ID)),]
+gender_life_no_legal$life = as.integer(difftime(as.Date('2018-01-01'), gender_life_no_legal$appln_date, units = 'day'))
+gender_life_no_legal$life = ifelse(gender_life_no_legal$life>7300, 7300, gender_life_no_legal$life)
+gender_life_no_legal$survival[gender_life_no_legal$life<7300] = 1
+
+gender_life = rbind(gender_life_lapse, gender_life_extension, gender_life_no_legal)
+gender_life$survival = -gender_life$survival+1
+
+### life regression
+
+library(survival)
+library(SurvRegCensCov)
+library(survminer)
+library(eha)
+
+# KM Curve
+fit = survfit(Surv(life, survival)~gender, gender_life)
+
+### KM Curve
+plot(fit,main="KM Curve", xlab="Time(days)", ylab=expression(paste(hat(S),"(t)")), col=c("red", "blue", "green"))
+plot(fit,main="KM Curve", xlim = c(0,6300),xlab="Time(days)",lwd = c(3,3,3), ylab='Survival Rate', col=c("red", "blue", "green"))
+legend("bottomright", legend=c("Male", "Female", "Mixed"),lty = c(1,1,1),lwd = c(3,3,3), col=c("blue", "red", "green"))
+
+table(gender_life$survival)
+
+
+# cox
+str(gender_life)
+colnames(gender_life)
+survival_gender <- coxph(Surv(life + survival) ~ claim + Family + IPC + 
+                           Backward + invent_num + company + hospital + 
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN + Grant_leg + citation + Male + Mixed + Topic2 + 
+                           Topic3 + Topic4 + Topic5+ Topic6 + Topic7 + Topic8 + Topic9 + Topic10 + Topic11,
+                         data = gender_life)
+
+summary(survival_gender)
+
+survival_gender1 <- coxph(Surv(life + survival) ~ claim + 
+                           Backward + invent_num + company + hospital + 
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN + Grant_leg + citation + Male +  
+                           Topic3 + Topic5+ Topic6 + Topic7 + Topic8 + Topic10 + Topic11,
+                         data = gender_life)
+
+summary(survival_gender1)
+
+survival_gender
+
+
+cox.zph(survival_gender1)
+
+
+
+formula_survival
+
+
+
+
+### KM Curve
+plot(fit,main="KM Curve", xlab="Time(days)", ylab=expression(paste(hat(S),"(t)")), col=c("red", "blue"))
+plot(fit,main="KM Curve", xlab="Time(days)", ylab='Survival Rate', col=c("red", "blue"))
+legend("topright", legend=c("Male", "Female"),lty = c(1,1), col=c("blue", "red"), bg="gray")
+
+
+### 성별의 역할.
+survival_gender_only <- survfit(Surv(life + survival) ~ gender,
+                                data = gender_life)
+
+ggsurvplot(survival_gender_only, data = gender_life, pval = TRUE)
+
+
+
+### CoxPH 적합
+
+
+survival_gender <- coxph(Surv(life + survival) ~ claim + Family + gender + backward + 
+                           invent_num + ipc_range + topic + company +
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                         data = gender_life)
+survival_gender
+
+survival_gender <- coxph(Surv(life + survival) ~ claim + gender + backward + 
+                           invent_num + topic + company +
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                         data = gender_life)
+
+summary(survival_gender)
+survival_gender
+
+
+cox.zph(survival_gender)
+
+
+survival_gender$coefficients
+survival_gender
+summary(survival_gender)
+
+
+survival_gender$residuals
+survival_gender$residuals
+sum(survival_gender$residuals^2)/length(survival_gender$residuals)
+1-sum(survival_gender$residuals^2)/sum((gender_life$life - mean(gender_life$life))^2)
+
+
+ggsurvplot(survfit(survival_gender), color = "#2E9FDF",
+           ggtheme = theme_minimal(), data = gender_life)
+ggforest(survival_gender, data = gender_life)
+cox.zph(survival_gender)
+
+survival_gender$residuals
+### Weibul Regression
+survival_gender_weibull <- weibreg(Surv(life + survival) ~ claim + Family + gender + backward + 
+                                     invent_num + ipc_range,
+                                   data = gender_life)
+
+
+survival_gender_phreg <- phreg(Surv(life + survival) ~  claim + Family + gender + backward + 
+                                 invent_num + ipc_range + topic + company +
+                                 INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN, dist = 'weibull', data = gender_life)
+
+
+survival_gender_coxreg <- coxreg(Surv(life + survival) ~  claim + Family + gender + backward + 
+                                   invent_num + ipc_range + topic + company +
+                                   INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                                 data = gender_life)
+check.dist(survival_gender_coxreg, survival_gender_phreg)
+
+
+str(gender_life)
