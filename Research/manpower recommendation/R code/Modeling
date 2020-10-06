@@ -1,0 +1,907 @@
+### 필요한 데이터 불러오기.
+period1_data <- read.csv('period1_data.csv', header = T, stringsAsFactors = F)
+period2_data <- read.csv('period2_data.csv', header = T, stringsAsFactors = F)
+period3_data <- read.csv('period3_data.csv', header = T, stringsAsFactors = F)
+
+### 자동차 관련 IPC 4자리
+Car <- c('B60B', 'B60D', 'B60G', 'B60H', 'B60J', 'B60K', 'B60L', 
+         'B60N', 'B60P', 'B60Q', 'B60R', 'B60S', 'B60T', 'B60W', 'B62D', 
+         'E01H', 'F01L', 'F01M', 'F01N', 'F01P', 'F02B', 'F02D', 'F02F', 
+         'F02G', 'F02M', 'F02N', 'F02P', 'F16J', 'G01P', 'G05D', 'G05G')
+
+### 통신 관련 IPC 4자리
+Tel <- c('G09B', 'G09C', 'H01P', 'H01Q', 'H01S', 'H02J', 'H03B', 
+         'H03C', 'H03D', 'H03F', 'H03G', 'H03H', 'H03M', 'H04B', 
+         'H04J', 'H04K', 'H04L', 'H04M', 'H04Q', 'H04W', 'H05K')
+
+IPC <- c(Car, Tel)
+IPC_num <- length(IPC)
+
+
+### 자동차 IPC
+Vehicle_ipc <- read.csv('Vehicle IPC.csv', header = F)
+colnames(Vehicle_ipc) <- c('ID', 'Year', 'IPC')
+Vehicle_ipc[1,1] <- 45876590
+length(unique(Vehicle_ipc$ID))
+Vehicle_ipc$IPC <- substr(Vehicle_ipc$IPC, 1, 4)
+Vehicle_ipc$index = 1
+Vehicle_ipc <- Vehicle_ipc %>% group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+Vehicle_ipc <- Vehicle_ipc[Vehicle_ipc$IPC %in% c(Tel, Car),]
+Vehicle_ipc$ID <- as.character(Vehicle_ipc$ID)
+
+### 통신 IPC
+library(dplyr)
+Tel_ipc <- read.csv('Telecommunication IPC.csv', header = F)
+colnames(Tel_ipc) <- c('ID', 'Year', 'IPC')
+Tel_ipc[1,1] <- 47364104
+Tel_ipc$IPC <- substr(Tel_ipc$IPC, 1, 4)
+Tel_ipc$index = 1
+Tel_ipc <- Tel_ipc %>% group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+Tel_ipc <- Tel_ipc[Tel_ipc$IPC %in% c(Tel, Car),]
+Tel_ipc$ID <- as.character(Tel_ipc$ID)
+
+### 합치기
+All_IPC_combination <- rbind(Vehicle_ipc, Tel_ipc)
+All_IPC_combination$index = 1
+All_IPC_combination <- All_IPC_combination %>%
+  group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+
+
+### 연도분할
+period1 <- All_IPC_combination[All_IPC_combination$Year < 2007,]
+period2 <- All_IPC_combination[All_IPC_combination$Year > 2006 & All_IPC_combination$Year < 2012 ,]
+period3 <- All_IPC_combination[All_IPC_combination$Year > 2011,]
+
+### IPC 별 특허 개수 구하기.
+period_patent_num_by_ipc <- function(period, IPC){
+  patent_num_by_ipc_vector <- c()
+  for (x in IPC){
+    patent_num_by_ipc <- length(unique(period$ID[period$IPC == x]))
+    patent_num_by_ipc_vector <- c(patent_num_by_ipc_vector, patent_num_by_ipc)
+  }
+  period_patent_num_by_ipc_dataframe <- data.frame(IPC = IPC, number = patent_num_by_ipc_vector)
+  return(period_patent_num_by_ipc_dataframe)
+}
+period1_patent_num_by_ipc <- period_patent_num_by_ipc(period1, IPC)
+period2_patent_num_by_ipc <- period_patent_num_by_ipc(period2, IPC)
+period3_patent_num_by_ipc <- period_patent_num_by_ipc(period3, IPC)
+
+### IPC 별 특허 성장율 지표.
+period_patent_growth_by_ipc <- function(period, IPC){
+  ipc_by_year <- period %>%
+    group_by(Year, IPC) %>%
+    summarise(number = sum(index))
+  patent_growth_by_ipc_vector <- c()
+  early_year <- min(period$Year)
+  later_year <- max(period$Year)
+  x='B60B'
+  for(x in IPC){
+    early_number = ipc_by_year$number[ipc_by_year$IPC == x & ipc_by_year$Year == early_year]
+    later_number = ipc_by_year$number[ipc_by_year$IPC == x & ipc_by_year$Year == later_year]
+    patent_growth_by_ipc_vector <- c(patent_growth_by_ipc_vector, (later_number-early_number)/early_number)
+  }
+  period_patent_growth_by_ipc_dataframe <- data.frame(IPC = IPC, number = patent_growth_by_ipc_vector)
+  return(period_patent_growth_by_ipc_dataframe)
+}
+period1_patent_growth_by_ipc <- period_patent_growth_by_ipc(period1, IPC)
+period2_patent_growth_by_ipc <- period_patent_growth_by_ipc(period2, IPC)
+period3_patent_growth_by_ipc <- period_patent_growth_by_ipc(period3, IPC)
+
+### Period 별 IPC 마다 할당된 ID 리스트.
+period_assign_ID_by_IPC <- function(period, IPC){
+  period_IPC_ID_list <- list()
+  for (x in 1:length(IPC)){
+    IPC_name <- IPC[x]
+    period_IPC_ID_list[[x]] <- unique(period$ID[period$IPC == IPC_name])
+  }
+  names(period_IPC_ID_list) <- IPC
+  return(period_IPC_ID_list)
+}
+period1_IPC_ID_list <- period_assign_ID_by_IPC(period1, IPC)
+period2_IPC_ID_list <- period_assign_ID_by_IPC(period2, IPC)
+period3_IPC_ID_list <- period_assign_ID_by_IPC(period3, IPC)
+
+
+
+### IPC 별 Inventor 수 지표.
+Inventor_family <- read.csv('Inventor and Family size.csv', header = F, stringsAsFactors = F)
+Inventor_family[1,1] <- 45447946
+colnames(Inventor_family) <- c('ID', 'Year', 'Family', 'Inventor')
+
+period_Inventor_Number_by_IPC <- function(Inventor_family, period_IPC_ID_list, IPC){
+  period_Inventor_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_Inventor_Number <- mean(Inventor_family$Inventor[Inventor_family$ID %in% ID_list])
+    period_Inventor_Number_by_IPC_vector <- c(period_Inventor_Number_by_IPC_vector, IPC_Inventor_Number)
+  }
+  period_Inventor_Number_by_IPC_dataframe <- data.frame(IPC = IPC, Inventor = period_Inventor_Number_by_IPC_vector)
+  return(period_Inventor_Number_by_IPC_dataframe)
+}
+period1_Inventor_Number_by_IPC <- period_Inventor_Number_by_IPC(Inventor_family, period1_IPC_ID_list, IPC)
+period2_Inventor_Number_by_IPC <- period_Inventor_Number_by_IPC(Inventor_family, period2_IPC_ID_list, IPC)
+period3_Inventor_Number_by_IPC <- period_Inventor_Number_by_IPC(Inventor_family, period3_IPC_ID_list, IPC)
+
+### IPC 별 Family 수 지표.
+period_Family_Number_by_IPC <- function(Inventor_family, period_IPC_ID_list, IPC){
+  period_Family_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_Family_Number <- mean(Inventor_family$Family[Inventor_family$ID %in% ID_list])
+    period_Family_Number_by_IPC_vector <- c(period_Family_Number_by_IPC_vector, IPC_Family_Number)
+  }
+  period_Family_Number_by_IPC_dataframe <- data.frame(IPC = IPC, Family = period_Family_Number_by_IPC_vector)
+  return(period_Family_Number_by_IPC_dataframe)
+}
+period1_Family_Number_by_IPC <- period_Family_Number_by_IPC(Inventor_family, period1_IPC_ID_list, IPC)
+period2_Family_Number_by_IPC <- period_Family_Number_by_IPC(Inventor_family, period2_IPC_ID_list, IPC)
+period3_Family_Number_by_IPC <- period_Family_Number_by_IPC(Inventor_family, period3_IPC_ID_list, IPC)
+
+### IPC 별 청구항 수 지표.
+Claim <- read.csv('claim.csv', header = F, stringsAsFactors = F)
+Claim[1,1] <- 467676
+colnames(Claim) <- c('ID', 'Year', 'Claim')
+Claim <- Claim %>%
+  group_by(ID, Year) %>%
+  summarise(Claim = max(Claim))
+
+period_Claim_Number_by_IPC <- function(Claim, period_IPC_ID_list, IPC){
+  period_Claim_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_Claim_Number <- mean(Claim$Claim[Claim$ID %in% ID_list])
+    period_Claim_Number_by_IPC_vector <- c(period_Claim_Number_by_IPC_vector, IPC_Claim_Number)
+  }
+  period_Claim_Number_by_IPC_dataframe <- data.frame(IPC = IPC, Claim = period_Claim_Number_by_IPC_vector)
+  return(period_Claim_Number_by_IPC_dataframe)
+}
+period1_Claim_Number_by_IPC <- period_Claim_Number_by_IPC(Claim, period1_IPC_ID_list, IPC)
+period2_Claim_Number_by_IPC <- period_Claim_Number_by_IPC(Claim, period2_IPC_ID_list, IPC)
+period3_Claim_Number_by_IPC <- period_Claim_Number_by_IPC(Claim, period3_IPC_ID_list, IPC)
+
+### IPC 별 후방 인용 수 지표.
+### 데이터 불러오기.
+Backward_publn_period1 <- read.csv('backward_publn_period1.csv', header = F, stringsAsFactors = F)
+Backward_publn_period2 <- read.csv('backward_publn_period2.csv', header = F, stringsAsFactors = F)
+Backward_publn_period3_Tel <- read.csv('backward_publn_period3_Tel.csv', header = F, stringsAsFactors = F)
+Backward_publn_period3_Vehicle <- read.csv('backward_publn_period3_Vehicle.csv', header = F, stringsAsFactors = F)
+Backward_publn_period3_Tel[1,1] <- 363736930
+Backward_publn_period3_Vehicle[1,1] <- 353438823
+Backward_publn_period3 <- rbind(Backward_publn_period3_Tel, Backward_publn_period3_Vehicle)
+rm(Backward_publn_period3_Tel, Backward_publn_period3_Vehicle)
+
+Backward_publn_period1[1,1] <- 52960605
+Backward_publn_period2[1,1] <- 267465015
+
+colnames(Backward_publn_period1) <- c('ID', 'Year', 'patent_backward', 'non_patent_backward')
+colnames(Backward_publn_period2) <- c('ID', 'Year', 'patent_backward', 'non_patent_backward')
+colnames(Backward_publn_period3) <- c('ID', 'Year', 'patent_backward', 'non_patent_backward')
+
+### 특허 인용 횟수 지표
+period_patent_backward_patent_number <- function(Backward_publn_period, period){
+  Backward_publn_period <- Backward_publn_period[Backward_publn_period$patent_backward != '0',]
+  Backward_publn_period$index = 1
+  Backward_publn_period <- Backward_publn_period %>%
+    group_by(ID, Year, patent_backward) %>%
+    summarise(index = mean(index))
+  Backward_publn_period <- Backward_publn_period %>%
+    group_by(ID) %>%
+    summarise(patent_backward = sum(index))
+  Backward_publn_period_temp <- data.frame(ID = unique(period$ID))
+  Backward_publn_period <- merge(Backward_publn_period_temp, Backward_publn_period,by = 'ID', all.x = T)
+  Backward_publn_period$patent_backward <- ifelse(is.na(Backward_publn_period$patent_backward), 0, Backward_publn_period$patent_backward)
+  return(Backward_publn_period)
+}
+Patent_Backward_publn_period1 <- period_patent_backward_patent_number(Backward_publn_period1, period1)
+Patent_Backward_publn_period2 <- period_patent_backward_patent_number(Backward_publn_period2, period2)
+Patent_Backward_publn_period3 <- period_patent_backward_patent_number(Backward_publn_period3, period3)
+
+period_Patent_Backward_Number_by_IPC <- function(Patent_Backward_publn_period, period_IPC_ID_list, IPC){
+  period_Patent_Backward_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_Patent_Backward_Number <- mean(Patent_Backward_publn_period$patent_backward[Patent_Backward_publn_period$ID %in% ID_list])
+    period_Patent_Backward_Number_by_IPC_vector <- c(period_Patent_Backward_Number_by_IPC_vector, IPC_Patent_Backward_Number)
+  }
+  period_Patent_Backward_Number_by_IPC_dataframe <- data.frame(IPC = IPC, patent_backward = period_Patent_Backward_Number_by_IPC_vector)
+  return(period_Patent_Backward_Number_by_IPC_dataframe)
+}
+
+period1_Patent_Backward_Number_by_IPC <- period_Patent_Backward_Number_by_IPC(Patent_Backward_publn_period1, period1_IPC_ID_list, IPC)
+period2_Patent_Backward_Number_by_IPC <- period_Patent_Backward_Number_by_IPC(Patent_Backward_publn_period2, period2_IPC_ID_list, IPC)
+period3_Patent_Backward_Number_by_IPC <- period_Patent_Backward_Number_by_IPC(Patent_Backward_publn_period3, period3_IPC_ID_list, IPC)
+
+### 비특허 인용 횟수 지표
+period_nonpatent_backward_patent_number <- function(Backward_publn_period, period){
+  Backward_publn_period <- Backward_publn_period[Backward_publn_period$patent_backward == '0',]
+  Backward_publn_period$index = 1
+  Backward_publn_period <- Backward_publn_period %>%
+    group_by(ID, Year, non_patent_backward) %>%
+    summarise(index = mean(index))
+  Backward_publn_period <- Backward_publn_period %>%
+    group_by(ID) %>%
+    summarise(non_patent_backward = sum(index))
+  Backward_publn_period_temp <- data.frame(ID = unique(period$ID))
+  Backward_publn_period <- merge(Backward_publn_period_temp, Backward_publn_period,by = 'ID', all.x = T)
+  Backward_publn_period$non_patent_backward <- ifelse(is.na(Backward_publn_period$non_patent_backward), 0, Backward_publn_period$non_patent_backward)
+  return(Backward_publn_period)
+}
+NonPatent_Backward_publn_period1 <- period_nonpatent_backward_patent_number(Backward_publn_period1, period1)
+NonPatent_Backward_publn_period2 <- period_nonpatent_backward_patent_number(Backward_publn_period2, period2)
+NonPatent_Backward_publn_period3 <- period_nonpatent_backward_patent_number(Backward_publn_period3, period3)
+
+period_NonPatent_Backward_Number_by_IPC <- function(NonPatent_Backward_publn_period, period_IPC_ID_list, IPC){
+  period_NonPatent_Backward_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_NonPatent_Backward_Number <- mean(NonPatent_Backward_publn_period$non_patent_backward[NonPatent_Backward_publn_period$ID %in% ID_list])
+    period_NonPatent_Backward_Number_by_IPC_vector <- c(period_NonPatent_Backward_Number_by_IPC_vector, IPC_NonPatent_Backward_Number)
+  }
+  period_NonPatent_Backward_Number_by_IPC_dataframe <- data.frame(IPC = IPC, non_patent_backward = period_NonPatent_Backward_Number_by_IPC_vector)
+  return(period_NonPatent_Backward_Number_by_IPC_dataframe)
+}
+
+period1_NonPatent_Backward_Number_by_IPC <- period_NonPatent_Backward_Number_by_IPC(NonPatent_Backward_publn_period1, period1_IPC_ID_list, IPC)
+period2_NonPatent_Backward_Number_by_IPC <- period_NonPatent_Backward_Number_by_IPC(NonPatent_Backward_publn_period2, period2_IPC_ID_list, IPC)
+period3_NonPatent_Backward_Number_by_IPC <- period_NonPatent_Backward_Number_by_IPC(NonPatent_Backward_publn_period3, period3_IPC_ID_list, IPC)
+
+### 전체 인용수
+Backward_publn_period1$index = 1
+Backward_publn_period2$index = 1
+Backward_publn_period3$index = 1
+Backward_publn_period1 <- Backward_publn_period1 %>%
+  group_by(ID) %>%
+  summarise(Backward = sum(index))
+Backward_publn_period2 <- Backward_publn_period2 %>%
+  group_by(ID) %>%
+  summarise(Backward = sum(index))
+Backward_publn_period3 <- Backward_publn_period3 %>%
+  group_by(ID) %>%
+  summarise(Backward = sum(index))
+patent_ID <- patent_scoring$ID
+Backward_publn_period1 <- Backward_publn_period1[Backward_publn_period1$ID %in% patent_ID,]
+Backward_publn_period2 <- Backward_publn_period2[Backward_publn_period2$ID %in% patent_ID,]
+Backward_publn_period3 <- Backward_publn_period3[Backward_publn_period3$ID %in% patent_ID,]
+Backward <- rbind(Backward_publn_period1, Backward_publn_period2, Backward_publn_period3)
+
+
+
+### 같은 문서를 인용한적이 있니?
+period_co_backward_ox <- function(Backward_publn_period, period_IPC_ID_list, IPC){
+  Backward_publn_period$patent_backward <- ifelse(Backward_publn_period$patent_backward == '0', Backward_publn_period$non_patent_backward , Backward_publn_period$patent_backward)
+  Backward_publn_period$index = 1
+  Backward_publn_period <- Backward_publn_period %>%
+    group_by(ID, Year, patent_backward) %>%
+    summarise(index = mean(index))
+  period_co_backward_ox <- data.frame(IPC1 = 'A', IPC2 = 'B', Co_backward = 0, stringsAsFactors = F)
+  for(i in 1:31){
+    for(j in 32:52){
+      first_ipc = IPC[i]
+      second_ipc = IPC[j]
+      first_publn_id <- Backward_publn_period$patent_backward[Backward_publn_period$ID %in% period_IPC_ID_list[[i]]]
+      second_publn_id <- Backward_publn_period$patent_backward[Backward_publn_period$ID %in% period_IPC_ID_list[[j]]]
+      intersect_publn_id <- length(intersect(first_publn_id, second_publn_id))
+      period_co_backward_ox <- rbind(period_co_backward_ox, c(first_ipc, second_ipc, intersect_publn_id))
+    }
+  }
+  return(period_co_backward_ox[-1,])
+}
+
+period1_co_backward_ox <- period_co_backward_ox(Backward_publn_period1, period1_IPC_ID_list, IPC)
+period2_co_backward_ox <- period_co_backward_ox(Backward_publn_period2, period2_IPC_ID_list, IPC)
+period3_co_backward_ox <- period_co_backward_ox(Backward_publn_period3, period3_IPC_ID_list, IPC)
+
+### 전방인용 수 전처리.
+forward_publn <- read.csv('forward_publn.csv', header = F, stringsAsFactors = F)
+forward_publn[1,1] <- 52270376
+colnames(forward_publn) <- c('ID', 'Year', 'forward_publn')
+forward_publn$index = 1
+forward_publn <- forward_publn %>%
+  group_by(ID, Year, forward_publn) %>%
+  summarise(index = mean(index))
+forward_publn <- forward_publn %>%
+  group_by(ID, Year) %>%
+  summarise(forward_number = sum(index))
+forward_publn$forward_number <- forward_publn$forward_number/(2017 - forward_publn$Year)
+
+forward_publn_temp <- data.frame(ID = unique(All_IPC_combination$ID))
+forward_publn <- merge(forward_publn_temp, forward_publn, by = 'ID', all.x = T)
+forward_publn$forward_number <- ifelse(is.na(forward_publn$forward_number), 0, forward_publn$forward_number)
+
+### 전방인용수 지표.
+period_Forward_Number_by_IPC <- function(forward_publn, period_IPC_ID_list, IPC){
+  period_Forward_Number_by_IPC_vector <- c()
+  for (i in 1:length(IPC)){
+    ID_list <- period_IPC_ID_list[[i]]
+    IPC_Forward_Number <- mean(forward_publn$forward_number[forward_publn$ID %in% ID_list])
+    period_Forward_Number_by_IPC_vector <- c(period_Forward_Number_by_IPC_vector, IPC_Forward_Number)
+  }
+  period_Forward_Number_by_IPC_dataframe <- data.frame(IPC = IPC, forward_number = period_Forward_Number_by_IPC_vector)
+  return(period_Forward_Number_by_IPC_dataframe)
+}
+
+period1_Forward_Number_by_IPC <- period_Forward_Number_by_IPC(forward_publn, period1_IPC_ID_list, IPC)
+period2_Forward_Number_by_IPC <- period_Forward_Number_by_IPC(forward_publn, period2_IPC_ID_list, IPC)
+period3_Forward_Number_by_IPC <- period_Forward_Number_by_IPC(forward_publn, period3_IPC_ID_list, IPC)
+
+### 전방인용수의 특징상 연도단위별로 min-max 정규화.
+period1_Forward_Number_by_IPC$forward_number <- minmax(period1_Forward_Number_by_IPC$forward_number)
+period2_Forward_Number_by_IPC$forward_number <- minmax(period2_Forward_Number_by_IPC$forward_number)
+period3_Forward_Number_by_IPC$forward_number <- minmax(period3_Forward_Number_by_IPC$forward_number)
+
+### 후방인용 appln_id 전처리.
+backward_appln_period1 <- read.csv('backward_appln_period1.csv', header = F, stringsAsFactors = F)
+backward_appln_period1[1,1] <- 51335296
+colnames(backward_appln_period1) <- c('ID', 'Year', 'Backward_appln')
+backward_appln_period2 <- read.csv('backward_appln_period2.csv', header = F, stringsAsFactors = F)
+backward_appln_period2[1,1] <- 274452535
+colnames(backward_appln_period2) <- c('ID', 'Year', 'Backward_appln')
+backward_appln_period3 <- read.csv('backward_appln_period3.csv', header = F, stringsAsFactors = F)
+backward_appln_period3[1,1] <- 445539095
+colnames(backward_appln_period3) <- c('ID', 'Year', 'Backward_appln')
+
+backward_appln_period1$index = 1
+backward_appln_period1 <- backward_appln_period1 %>%
+  group_by(ID, Backward_appln) %>%
+  summarise(index = mean(index))
+backward_appln_period2$index = 1
+backward_appln_period2 <- backward_appln_period2 %>%
+  group_by(ID, Backward_appln) %>%
+  summarise(index = mean(index))
+backward_appln_period3$index = 1
+backward_appln_period3 <- backward_appln_period3 %>%
+  group_by(ID, Backward_appln) %>%
+  summarise(index = mean(index))
+
+### 서로다른 두 IPC 페어간에 인용이 존재하는가?
+period_Co_citation_in_IPC_pair <- function(backward_appln_period, period_IPC_ID_list, IPC){
+  period_Co_citation_in_IPC_pair_ox <- data.frame(IPC1 = 'A', IPC2 = 'B', Co_backward_1to2 = 0, Co_backward_2to1 = 0, stringsAsFactors = F)
+  for (i in 1:31){
+    for (j in 32:52){
+      first_ipc = IPC[i]
+      second_ipc = IPC[j]
+      first_ipc_appln_id <- period_IPC_ID_list[[i]]
+      second_ipc_appln_id <- period_IPC_ID_list[[j]]
+      first_ipc_backward_appln <- backward_appln_period[backward_appln_period$ID %in% first_ipc_appln_id, ]
+      first_ipc_backward_appln <- first_ipc_backward_appln[first_ipc_backward_appln$Backward_appln %in% second_ipc_appln_id,]
+      Co_backward_1to2 <- length(first_ipc_backward_appln$ID)
+      second_ipc_backward_appln <- backward_appln_period[backward_appln_period$ID %in% second_ipc_appln_id, ]
+      second_ipc_backward_appln <- second_ipc_backward_appln[second_ipc_backward_appln$Backward_appln %in% first_ipc_appln_id,]
+      Co_backward_2to1 <- length(second_ipc_backward_appln$ID)
+      period_Co_citation_in_IPC_pair_ox <- rbind(period_Co_citation_in_IPC_pair_ox, 
+                                                 c(first_ipc, second_ipc, Co_backward_1to2, Co_backward_2to1))
+    }
+  }
+  return(period_Co_citation_in_IPC_pair_ox[-1,])
+}
+
+period1_Co_citation_in_IPC_pair <- period_Co_citation_in_IPC_pair(backward_appln_period1, period1_IPC_ID_list, IPC)
+period2_Co_citation_in_IPC_pair <- period_Co_citation_in_IPC_pair(backward_appln_period2, period2_IPC_ID_list, IPC)
+period3_Co_citation_in_IPC_pair <- period_Co_citation_in_IPC_pair(backward_appln_period3, period3_IPC_ID_list, IPC)
+
+
+### 발명자 person_id 전처리.
+Inventor_person_id <- read.csv('Inventor_person_id.csv', header = F, stringsAsFactors = F)
+Inventor_person_id[1,1] <- 323849887
+colnames(Inventor_person_id) <- c('ID', 'Year', 'Person_ID')
+
+### 두 IPC 페어의 관계에서 같은 발명가가 속하는가?
+period_co_Inventor_ox <- function(Inventor_person_id, period_IPC_ID_list, IPC){
+  period_co_Inventor_ox <- data.frame(IPC1 = 'A', IPC2 = 'B', Co_Inventor = 0, stringsAsFactors = F)
+  for(i in 1:31){
+    for(j in 32:52){
+      first_ipc = IPC[i]
+      second_ipc = IPC[j]
+      first_person_id <- Inventor_person_id$Person_ID[Inventor_person_id$ID %in% period_IPC_ID_list[[i]]]
+      second_person_id <- Inventor_person_id$Person_ID[Inventor_person_id$ID %in% period_IPC_ID_list[[j]]]
+      intersect_person_id <- length(intersect(first_person_id, second_person_id))
+      period_co_Inventor_ox <- rbind(period_co_Inventor_ox, c(first_ipc, second_ipc, intersect_person_id))
+    }
+  }
+  return(period_co_Inventor_ox[-1,])
+}
+
+period1_co_Inventor_ox <- period_co_Inventor_ox(Inventor_person_id, period1_IPC_ID_list, IPC)
+period2_co_Inventor_ox <- period_co_Inventor_ox(Inventor_person_id, period2_IPC_ID_list, IPC)
+period3_co_Inventor_ox <- period_co_Inventor_ox(Inventor_person_id, period3_IPC_ID_list, IPC)
+
+
+### 변수들 합치기.
+### 특허의 특성변수 먼저.
+IPC_characteristic_variable_period1 <- merge(period1_patent_num_by_ipc, period1_patent_growth_by_ipc, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_Inventor_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_Claim_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_Patent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_NonPatent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_Family_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period1 <- merge(IPC_characteristic_variable_period1, period1_Forward_Number_by_IPC, by = 'IPC')
+colnames(IPC_characteristic_variable_period1)[2:3] <- c('patent_number', 'growth')
+
+IPC_characteristic_variable_period2 <- merge(period2_patent_num_by_ipc, period2_patent_growth_by_ipc, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_Inventor_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_Claim_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_Patent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_NonPatent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_Family_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period2 <- merge(IPC_characteristic_variable_period2, period2_Forward_Number_by_IPC, by = 'IPC')
+colnames(IPC_characteristic_variable_period2)[2:3] <- c('patent_number', 'growth')
+
+IPC_characteristic_variable_period3 <- merge(period3_patent_num_by_ipc, period3_patent_growth_by_ipc, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_Inventor_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_Claim_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_Patent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_NonPatent_Backward_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_Family_Number_by_IPC, by = 'IPC')
+IPC_characteristic_variable_period3 <- merge(IPC_characteristic_variable_period3, period3_Forward_Number_by_IPC, by = 'IPC')
+colnames(IPC_characteristic_variable_period3)[2:3] <- c('patent_number', 'growth')
+
+
+
+period_data_bibilographic <- function(period_data, IPC_characteristic_variable_period){
+  IPC_combination <- period_data[,1:2]
+  period_data_bibilographic_dataframe <- data.frame(IPC1 = 'A', IPC2 = 'B', 
+                                                    min_Patent_Number = 0, max_Patent_Number = 0,
+                                                    min_Growth = 0, max_Growth = 0, 
+                                                    min_Inventor_Number = 0, max_Inventor_Number = 0,
+                                                    min_Claim = 0, max_Claim = 0,
+                                                    min_Patent_Backward = 0, max_Patent_Backward = 0,
+                                                    min_Nonpatent_Backward = 0, max_Nonpatent_Backward = 0,
+                                                    min_Family_Number = 0, max_Family_Number = 0,
+                                                    min_Forward_Number = 0, max_Forward_Number = 0, stringsAsFactors = F)
+  for(i in 1:length(period_data$IPC1)){
+    first_ipc <- IPC_combination[i,1]
+    second_ipc <- IPC_combination[i,2]
+    First_IPC_characteristic_variable_period <- IPC_characteristic_variable_period[IPC_characteristic_variable_period$IPC == first_ipc, ]
+    Second_IPC_characteristic_variable_period <- IPC_characteristic_variable_period[IPC_characteristic_variable_period$IPC == second_ipc, ]
+    temp_vector <- c()
+    for (j in 2:9){
+      temp_vector <- c(temp_vector, 
+                       min(First_IPC_characteristic_variable_period[j], Second_IPC_characteristic_variable_period[j]),
+                       max(First_IPC_characteristic_variable_period[j], Second_IPC_characteristic_variable_period[j])-min(First_IPC_characteristic_variable_period[j], Second_IPC_characteristic_variable_period[j]))
+    }
+    period_data_bibilographic_dataframe <- rbind(period_data_bibilographic_dataframe, c(first_ipc, second_ipc, temp_vector))
+  }
+  return(merge(period_data, period_data_bibilographic_dataframe, by = c('IPC1', 'IPC2')))
+}
+
+period1_data_bibilographic <- period_data_bibilographic(period1_data, IPC_characteristic_variable_period1)
+period2_data_bibilographic <- period_data_bibilographic(period2_data, IPC_characteristic_variable_period2)
+period3_data_bibilographic <- period_data_bibilographic(period3_data, IPC_characteristic_variable_period3)
+
+### IPC 상호작용 변수 추가.
+period1_data_bibilographic_Co <-  merge(period1_data_bibilographic, period1_co_backward_ox, by = c('IPC1', 'IPC2'))
+period1_data_bibilographic_Co <-  merge(period1_data_bibilographic_Co, period1_co_Inventor_ox, by = c('IPC1', 'IPC2'))
+period1_data_bibilographic_Co <-  merge(period1_data_bibilographic_Co, period1_Co_citation_in_IPC_pair, by = c('IPC1', 'IPC2'))
+
+period2_data_bibilographic_Co <-  merge(period2_data_bibilographic, period2_co_backward_ox, by = c('IPC1', 'IPC2'))
+period2_data_bibilographic_Co <-  merge(period2_data_bibilographic_Co, period2_co_Inventor_ox, by = c('IPC1', 'IPC2'))
+period2_data_bibilographic_Co <-  merge(period2_data_bibilographic_Co, period2_Co_citation_in_IPC_pair, by = c('IPC1', 'IPC2'))
+
+period3_data_bibilographic_Co <-  merge(period3_data_bibilographic, period3_co_backward_ox, by = c('IPC1', 'IPC2'))
+period3_data_bibilographic_Co <-  merge(period3_data_bibilographic_Co, period3_co_Inventor_ox, by = c('IPC1', 'IPC2'))
+period3_data_bibilographic_Co <-  merge(period3_data_bibilographic_Co, period3_Co_citation_in_IPC_pair, by = c('IPC1', 'IPC2'))
+
+for(i in 23:42){
+  period1_data_bibilographic_Co[,i] <- as.numeric(period1_data_bibilographic_Co[,i])
+  period2_data_bibilographic_Co[,i] <- as.numeric(period2_data_bibilographic_Co[,i])
+  period3_data_bibilographic_Co[,(i-1)] <- as.numeric(period3_data_bibilographic_Co[,(i-1)])
+}
+
+
+period1_data_bibilographic_Co$Co_backward_1to2 <- ifelse(period1_data_bibilographic_Co$Co_backward_1to2 > 0, 1, 0)
+period1_data_bibilographic_Co$Co_backward_2to1 <- ifelse(period1_data_bibilographic_Co$Co_backward_2to1 > 0, 1, 0)
+period1_data_bibilographic_Co$Co_backward_between <- period1_data_bibilographic_Co$Co_backward_1to2 + period1_data_bibilographic_Co$Co_backward_2to1
+period1_data_bibilographic_Co$Co_backward_between <- factor(period1_data_bibilographic_Co$Co_backward_between)
+
+period1_data_bibilographic_Co$Co_Inventor <- ifelse(period1_data_bibilographic_Co$Co_Inventor > 0, 1, 0)
+period1_data_bibilographic_Co$Co_Inventor <- factor(period1_data_bibilographic_Co$Co_Inventor)
+
+period2_data_bibilographic_Co$Co_backward_1to2 <- ifelse(period2_data_bibilographic_Co$Co_backward_1to2 > 0, 1, 0)
+period2_data_bibilographic_Co$Co_backward_2to1 <- ifelse(period2_data_bibilographic_Co$Co_backward_2to1 > 0, 1, 0)
+period2_data_bibilographic_Co$Co_backward_between <- period2_data_bibilographic_Co$Co_backward_1to2 + period2_data_bibilographic_Co$Co_backward_2to1
+period2_data_bibilographic_Co$Co_backward_between <- factor(period2_data_bibilographic_Co$Co_backward_between)
+
+period2_data_bibilographic_Co$Co_Inventor <- ifelse(period2_data_bibilographic_Co$Co_Inventor > 0, 1, 0)
+period2_data_bibilographic_Co$Co_Inventor <- factor(period2_data_bibilographic_Co$Co_Inventor)
+
+period3_data_bibilographic_Co$Co_backward_1to2 <- ifelse(period3_data_bibilographic_Co$Co_backward_1to2 > 0, 1, 0)
+period3_data_bibilographic_Co$Co_backward_2to1 <- ifelse(period3_data_bibilographic_Co$Co_backward_2to1 > 0, 1, 0)
+period3_data_bibilographic_Co$Co_backward_between <- period3_data_bibilographic_Co$Co_backward_1to2 + period3_data_bibilographic_Co$Co_backward_2to1
+period3_data_bibilographic_Co$Co_backward_between <- factor(period3_data_bibilographic_Co$Co_backward_between)
+
+period3_data_bibilographic_Co$Co_Inventor <- ifelse(period3_data_bibilographic_Co$Co_Inventor > 0, 1, 0)
+period3_data_bibilographic_Co$Co_Inventor <- factor(period3_data_bibilographic_Co$Co_Inventor)
+
+period1_data_bibilographic_Co$link <- factor(period1_data_bibilographic_Co$link)
+period2_data_bibilographic_Co$link <- factor(period2_data_bibilographic_Co$link)
+
+period1_data_bibilographic_Co$prior_link <- factor(period1_data_bibilographic_Co$prior_link)
+period2_data_bibilographic_Co$prior_link <- factor(period2_data_bibilographic_Co$prior_link)
+period3_data_bibilographic_Co$prior_link <- factor(period3_data_bibilographic_Co$prior_link)
+
+
+### 데이터 저장하기.
+
+summary(period1_data_bibilographic_Co)
+
+write.csv(period1_data_bibilographic_Co, 'period1_data_bibilographic_Co.csv', row.names = F)
+write.csv(period2_data_bibilographic_Co, 'period2_data_bibilographic_Co.csv', row.names = F)
+write.csv(period3_data_bibilographic_Co, 'period3_data_bibilographic_Co.csv', row.names = F)
+
+
+
+
+
+
+############################ 머신러닝 알고리즘으로 Link Prediction
+### 필요한 패키지 불러오기.
+library(randomForest)
+library(caret)
+library(e1071)
+library(C50)
+
+
+### 우선 서지학적 정보가 없을때
+### formula 정의
+form <- as.formula(paste('link ~ ', paste(colnames(period3_data_bibilographic_Co)[c(3:20)], collapse = ' + ')))
+
+
+
+### RandomForest tuning
+random_forest_tuning_no_bibil <- data.frame(mtry = 0, ntree = 0, Accuracy = 0)
+for (x in 3:17){
+  for (y in seq(100,2500, by = 50)){
+    Accuracy = c()
+    for(i in 1:5){
+      rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = x, ntree = y)
+      pred_rf <- predict(rf_model, period2_data_bibilographic_Co)
+      Accuracy = c(Accuracy, confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)$overall['Accuracy'])
+    }
+    Accuracy <- mean(Accuracy)
+    random_forest_tuning_no_bibil <- rbind(random_forest_tuning_no_bibil, c(x,y,Accuracy))
+  }
+}
+
+### svm tuning
+svm_tuning_no_bibil <- data.frame(gamma = 0, cost = 0, Accuracy = 0)
+for (x in c(-5:5)){
+  for (y in 1:5){
+    Accuracy = c()
+    svm_model <- svm(formula = form, data = period1_data_bibilographic_Co, gamma = 2^x, cost = 2^y)
+    pred_svm <- predict(svm_model, period2_data_bibilographic_Co)
+    Accuracy <- confusionMatrix(pred_svm, period2_data_bibilographic_Co$link)$overall['Accuracy']
+    svm_tuning_no_bibil <- rbind(svm_tuning_no_bibil, c(x,y,Accuracy))
+  }
+}
+
+### C50 tuning
+C50_tuning_no_bibil <- data.frame(winnow = TRUE, rules = TRUE, fuzzy = TRUE, trials = 0, Accuracy = 0)
+for (x in c(TRUE, FALSE)){
+  for (y in c(TRUE, FALSE)){
+    for (z in c(TRUE, FALSE)){
+      for (w in 1:100){
+        C50_model <- C5.0(formula = form, data = period1_data_bibilographic_Co, rules = y, trials = w, control = C5.0Control(winnow = x, fuzzyThreshold = z))
+        pred_C50 <- predict(C50_model, period2_data_bibilographic_Co)
+        Accuracy = confusionMatrix(pred_C50, period2_data_bibilographic_Co$link)$overall['Accuracy']
+        C50_tuning_no_bibil <- rbind(C50_tuning_no_bibil, c(x,y,z,w,Accuracy))
+      }
+    }
+  }
+}
+
+### formula 정의
+form <- as.formula(paste('link ~ ', paste(colnames(period3_data_bibilographic_Co)[c(3:39, 42)], collapse = ' + ')))
+
+### RandomForest tuning
+library(randomForest)
+random_forest_tuning <- data.frame(mtry = 0, ntree = 0, Accuracy = 0)
+for (x in 3:37){
+  for (y in seq(100,2500, by = 100)){
+    Accuracy = c()
+    for(i in 1:10){
+      rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = x, ntree = y)
+      pred_rf <- predict(rf_model, period2_data_bibilographic_Co)
+      Accuracy = c(Accuracy, confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)$overall['Accuracy'])
+    }
+    Accuracy <- mean(Accuracy)
+    random_forest_tuning <- rbind(random_forest_tuning, c(x,y,Accuracy))
+  }
+}
+
+### svm tuning
+library(e1071)
+svm_tuning <- data.frame(gamma = 0, cost = 0, Accuracy = 0)
+for (x in c(-5:5)){
+  for (y in 1:5){
+    Accuracy = c()
+    svm_model <- svm(formula = form, data = period1_data_bibilographic_Co, gamma = 2^x, cost = 2^y)
+    pred_svm <- predict(svm_model, period2_data_bibilographic_Co)
+    Accuracy <- confusionMatrix(pred_svm, period2_data_bibilographic_Co$link)$overall['Accuracy']
+    svm_tuning <- rbind(svm_tuning, c(x,y,Accuracy))
+  }
+}
+
+### C50 tuning
+C50_tuning <- data.frame(winnow = TRUE, rules = TRUE, fuzzy = TRUE, trials = 0, Accuracy = 0)
+for (x in c(TRUE, FALSE)){
+  for (y in c(TRUE, FALSE)){
+    for (z in c(TRUE, FALSE)){
+      for (w in 1:100){
+        C50_model <- C5.0(formula = form, data = period1_data_bibilographic_Co, rules = y, trials = w, control = C5.0Control(winnow = x, fuzzyThreshold = z))
+        pred_C50 <- predict(C50_model, period2_data_bibilographic_Co)
+        Accuracy = confusionMatrix(pred_C50, period2_data_bibilographic_Co$link)$overall['Accuracy']
+        C50_tuning <- rbind(C50_tuning, c(x,y,z,w,Accuracy))
+      }
+    }
+  }
+}
+
+### Precision으로 튜닝?
+
+
+
+
+
+### 최적의 파라미터 조합으로 성능 평가
+rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = 3, ntree = 2100)
+pred_rf <- predict(rf_model, period2_data_bibilographic_Co)
+confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)
+new_link_period1and2 <- data.frame(period1_data_bibilographic_Co$link, period2_data_bibilographic_Co$link, pred_rf)
+
+svm_model <- svm(formula = form, data = period1_data_bibilographic_Co)
+pred_svm <- predict(svm_model, period1_data_bibilographic_Co)
+confusionMatrix(pred_svm, period2_data_bibilographic_Co$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data$link, attr(pred_rf, "probabilities")[,1])
+
+z <- period1_data[period1_data$prior_link == 0,]
+table(z$link)
+
+z2 <- period2_data[period2_data$prior_link == 0,]
+table(z2$link)
+
+table(period1_data_bibilographic_Co$prior_link)
+table(period2_data_bibilographic_Co$prior_link)
+table(period3_data_bibilographic_Co$prior_link)
+
+
+
+period1_data_bibilographic_Co$link <- factor(period1_data_bibilographic_Co$link)
+period2_data_bibilographic_Co$link <- factor(period2_data_bibilographic_Co$link)
+
+period1_data_bibilographic_Co$prior_link <- factor(period1_data_bibilographic_Co$prior_link)
+period2_data_bibilographic_Co$prior_link <- factor(period2_data_bibilographic_Co$prior_link)
+period3_data_bibilographic_Co$prior_link <- factor(period3_data_bibilographic_Co$prior_link)
+
+str(period1_data_bibilographic_Co)
+
+
+library(caret)
+library(C50)
+C50_model <- C5.0(formula = form, data = period1_data_bibilographic_Co, rules = F, trials = 44, control = C5.0Control(winnow = F, fuzzyThreshold = T))
+pred_C50 <- predict(C50_model, period2_data_bibilographic_Co, type = 'class')
+confusionMatrix(pred_C50, period2_data_bibilographic_Co$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data_bibilographic_Co$link, pred_C50)
+plot(C50_model)
+
+
+C50_model <- C5.0(formula = form, data = period1_data_bibilographic_Co, rules = T, trials = 59, control = C5.0Control(winnow = F, fuzzyThreshold = T))
+pred_C50 <- predict(C50_model, period2_data_bibilographic_Co, type = 'class')
+confusionMatrix(pred_C50, period2_data_bibilographic_Co$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data_bibilographic_Co$link, pred_C50)
+
+new_link_period1and2_new <- new_link_period1and2[new_link_period1and2$period1_data.link == 0,]
+new_link_period1and2_new <- new_link_period1and2_new[new_link_period1and2_new$period2_data_bibilographic_Co.link == 1,]
+table(new_link_period1and2_new$period2_data_bibilographic_Co.link)
+
+
+
+
+### 가장 좋은것은 C5.0
+### 확률계산하기.
+#accuracy <- c()
+#seed_temp <- sample(1:1000000, 500)
+#for (i in 1:500){
+#  set.seed(seed_temp[i])
+#  rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = 3, ntree = 2100)
+#  pred_rf <- predict(rf_model, period2_data_bibilographic_Co)
+#  accuracy_temp = confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)$overall['Accuracy']
+#  accuracy <- c(accuracy, accuracy_temp)
+#}
+#good_accuracy <- data.frame(seed = seed_temp, Accuracy = accuracy)
+
+#good_seed <- good_accuracy$seed[which(good_accuracy$Accuracy == max(good_accuracy$Accuracy))[1]]
+#set.seed(good_seed)
+#rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = 3, ntree = 2100)
+#pred_rf <- predict(rf_model, period2_data_bibilographic_Co)
+#confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)
+
+
+#### C5.0 based Probability 계산.
+pred_C50 <- data.frame(predict(C50_model, period3_data_bibilographic_Co, type = 'prob'))
+predicted_link_probability <- cbind(period3_data_bibilographic_Co[,1:2], pred_C50$X1)
+colnames(predicted_link_probability)[3] <- 'Prob'
+
+### 예측 결과.
+library(C50)
+pred_C50 <- data.frame(predict(C50_model, period3_data_bibilographic_Co, type = 'class'))
+predict_result <- data.frame(IPC1 = period3_data_bibilographic_Co$IPC1,
+                             IPC2 = period3_data_bibilographic_Co$IPC2, 
+                             prior = period3_data_bibilographic_Co$prior_link,
+                             prediction = as.vector(pred_C50$predict.C50_model..period3_data_bibilographic_Co..type....class..))
+
+table(predict_result$prediction)
+table(predict_result$prior, predict_result$prediction)
+
+### 예측 결과2 (rf)
+rf_model <- randomForest(formula = form, data = period1_data_bibilographic_Co, mtry = 12, ntree = 600)
+pred_rf <- predict(rf_model, period2_data_bibilographic_Co, type = 'class')
+confusionMatrix(pred_rf, period2_data_bibilographic_Co$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data_bibilographic_Co$link, pred_rf)
+
+pred_rf <- data.frame(predict(rf_model, period3_data_bibilographic_Co, type = 'class'))
+predict_result <- data.frame(IPC1 = period3_data_bibilographic_Co$IPC1,
+                             IPC2 = period3_data_bibilographic_Co$IPC2, 
+                             prior = period3_data_bibilographic_Co$prior_link,
+                             prediction = as.vector(pred_rf$predict.rf_model..period3_data_bibilographic_Co..type....class..))
+
+table(pred_rf)
+
+
+
+### 현대차 소유 특허비율 불러오기.
+Hyundai_ipc <- Hyundai_ipc[-32,]
+write.csv(Hyundai_ipc, 'Hyundai_ipc.csv', row.names = F)
+
+IPC_importance <- data.frame(IPC = Tel)
+IPC_importance$Importance = 0
+for(x in 1:21){
+  for(y in 1:31){
+    IPC1 <- IPC_importance$IPC[x]
+    IPC2 <- Hyundai_ipc$IPC[y]
+    Importance_temp <- Hyundai_ipc$num[y] * predicted_link_probability$Prob[predicted_link_probability$IPC1 == IPC2 & predicted_link_probability$IPC2 == IPC1]
+    IPC_importance$Importance[x] <- IPC_importance$Importance[x] + Importance_temp
+  }
+}
+
+### 발명가 특허 점수 환산.
+
+## 현대자동차 특허와의 유사성 계산.
+## 6747개의 융합기술과의 유사성
+text_similarity <- read.csv('Similarity.csv', header = T, stringsAsFactors = F)
+
+
+### 특허 발명가 이름 불러오기.
+Inventor_name <- read.csv('Inventor_name.csv', stringsAsFactors = F)
+colnames(Inventor_name)[1] <- 'Person_ID'
+
+for(i in which(nchar(Inventor_name$X)>1)){
+  Inventor_name$Name[i] = paste(Inventor_name$Name[i], Inventor_name$Auth[i], Inventor_name$Sector[i], sep = '_')
+  Inventor_name$Auth[i] = Inventor_name$X[i]
+  Inventor_name$Sector[i] = ''
+}
+Inventor_name <- Inventor_name[,1:4]
+Inventor_name$index = 1
+Inventor_name <- Inventor_name %>%
+  group_by(Person_ID, Name, Auth, Sector) %>%
+  summarise(index = mean(index))
+Inventor_name <- Inventor_name[,1:4]
+
+Jamison <- Inventor_name[grep('Jamison', Inventor_name$Name, ignore.case = T),]
+Jamison <- Inventor_person_id[Inventor_person_id$Person_ID == 7662236, ]
+
+Overmyer <- Inventor_name[grep('SHANE R.', Inventor_name$Name, ignore.case = T),]
+Overmyer <- Inventor_person_id[Inventor_person_id$Person_ID == 12347477, ]
+
+PARTHEESh = Inventor_name[grep('PARTHEESh', Inventor_name$Name, ignore.case = T),]
+PARTHEESh <- Inventor_person_id[Inventor_person_id$Person_ID == 12137466, ]
+
+BOTTS = Inventor_name[grep('BOTTS_ RICHARD EDWARD', Inventor_name$Name, ignore.case = T),]
+BOTTS <- Inventor_person_id[Inventor_person_id$Person_ID == 12062175, ]
+
+YANG = Inventor_name[grep('YANG LIAN', Inventor_name$Name, ignore.case = T),]
+YANG <- Inventor_person_id[Inventor_person_id$Person_ID == 45295869, ]
+
+
+BOTTS_ 
+head(Inventor_person_id)
+
+
+#### Applicant 불러오기.
+Applicant <- read.csv('Applicant.csv', stringsAsFactors = F)
+colnames(Applicant)[1] <- 'ID'
+hyundai_id <- Applicant$ID[grep('hyundai', Applicant$Applicant, ignore.case = T)]
+hyundai_person <- Inventor_person_id$Person_ID[Inventor_person_id$ID %in% hyundai_id]
+
+
+## 특허마다 점수 매기기
+All_IPC_combination_Tel <- All_IPC_combination[All_IPC_combination$IPC %in% Tel,]
+All_IPC_combination_Tel <- merge(All_IPC_combination_Tel, IPC_importance, by = 'IPC')
+patent_scoring <- All_IPC_combination_Tel %>%
+  group_by(ID) %>%
+  summarise(Score = sum(Importance^2), number = sum(index))
+patent_scoring$Score <- patent_scoring$Score/patent_scoring$number
+patent_scoring$Score <- sqrt(patent_scoring$Score)
+patent_scoring <- merge(patent_scoring, text_similarity, by = 'ID')
+patent_scoring$Score <- patent_scoring$Score * patent_scoring$Similarity
+patent_scoring <- patent_scoring[,1:2]
+patent_scoring$index = 1
+patent_scoring_year <- merge(patent_scoring, Inventor_family[,1:2], by = 'ID')
+patent_scoring = patent_scoring[!(patent_scoring$ID %in% patent_text_focus$ID),]
+
+
+### 발명가 스코어링 함수 정의.
+inventor_Scoring_function <- function(Inventor_person_id, patent_scoring, Value, patent_num, Inventor_name, Inventor_person_id_three_year, hyundai_id){
+  patent_scoring <- merge(patent_scoring, Value, by = 'ID')
+  patent_scoring$Score = patent_scoring$Score * patent_scoring[,4]
+  Inventor_scoring <- merge(Inventor_person_id, patent_scoring, by = 'ID')
+  Inventor_scoring <- Inventor_scoring %>%
+    group_by(Person_ID) %>%
+    summarise(Score = sum(Score), Number = sum(index))
+  Inventor_scoring <- Inventor_scoring[Inventor_scoring$Person_ID %in% Inventor_person_id_three_year,]
+  Inventor_scoring <- Inventor_scoring[Inventor_scoring$Number == patent_num, ]
+  Inventor_scoring <- Inventor_scoring[!(Inventor_scoring$Person_ID %in% hyundai_person), ]
+  Inventor_scoring <- Inventor_scoring[order(Inventor_scoring$Score, decreasing = T),]
+  Inventor_scoring <- Inventor_scoring[1:10,]
+  Inventor_scoring <- merge(Inventor_scoring, Inventor_name, by = 'Person_ID')
+  Inventor_scoring <- Inventor_scoring[order(Inventor_scoring$Score, decreasing = T),]
+  return(Inventor_scoring)
+}
+
+
+### 모든 특허의 가치는 같다.
+Patent_no_value <- data.frame(ID = patent_scoring$ID, same_value = rep(1, length(patent_scoring$ID)))
+Inventor_scoring_first <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Patent_no_value, 1, Inventor_name, Inventor_person_id_three_year)
+Inventor_scoring_five <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Patent_no_value, 5, Inventor_name, Inventor_person_id_three_year)
+table(Inventor_scoring_first$Number)
+### Claim
+head(Claim,5)
+Claim <- Claim[,c(1,3)]
+Claim_raw = Claim
+Claim$Claim = sqrt(Claim$Claim)
+Inventor_scoring_Claim_first <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Claim, 1, Inventor_name, Inventor_person_id_three_year)
+Inventor_scoring_Claim_five <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Claim, 5, Inventor_name, Inventor_person_id_three_year)
+
+### Backward
+Backward_raw = Backward
+Backward$Backward = sqrt(Backward$Backward)
+Inventor_scoring_Backward_first <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Backward, 1, Inventor_name, Inventor_person_id_three_year)
+Inventor_scoring_Backward_five <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Backward, 5, Inventor_name, Inventor_person_id_three_year)
+
+
+### Forward
+Forward <- forward_publn[,c(1,3)]
+Forward$forward_number = sqrt(Forward$forward_number)
+Inventor_scoring_Forward_first <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Forward, 1, Inventor_name, Inventor_person_id_three_year)
+Inventor_scoring_Forward_five <- inventor_Scoring_function(Inventor_person_id, patent_scoring, Forward, 5, Inventor_name, Inventor_person_id_three_year)
+
+### 사람의 소속을 확인해보자.
+Show_inventor <- function(Inventor_scoring, Inventor_person_id, Applicant){
+  list1 <- list()
+  Person_ID <- Inventor_scoring$Person_ID
+  for(i in 1:length(Inventor_scoring$Person_ID)){
+    ID <- Inventor_person_id$ID[Inventor_person_id$Person_ID == Inventor_scoring$Person_ID[i]]
+    Applicant_name <- Applicant$Applicant[Applicant$ID %in% ID]
+    list1[[i]] <- unique(Applicant_name)
+    names(list1)[i] <- Inventor_scoring$Name[i]
+  }
+  return(list1)
+}
+
+Inventor_scoring_first_show <- Show_inventor(Inventor_scoring_first, Inventor_person_id, Applicant)
+Inventor_scoring_five_show <- Show_inventor(Inventor_scoring_five, Inventor_person_id, Applicant)
+
+Inventor_scoring_Claim_first_show <- Show_inventor(Inventor_scoring_Claim_first, Inventor_person_id, Applicant)
+Inventor_scoring_Claim_five_show <- Show_inventor(Inventor_scoring_Claim_five, Inventor_person_id, Applicant)
+
+Inventor_scoring_Backward_first_show <- Show_inventor(Inventor_scoring_Backward_first, Inventor_person_id, Applicant)
+Inventor_scoring_Backward_five_show <- Show_inventor(Inventor_scoring_Backward_five, Inventor_person_id, Applicant)
+
+Inventor_scoring_Forward_first_show <- Show_inventor(Inventor_scoring_Forward_first, Inventor_person_id, Applicant)
+Inventor_scoring_Forward_five_show <- Show_inventor(Inventor_scoring_Forward_five, Inventor_person_id, Applicant)
+
+head(forward_publn)
+
+
