@@ -1,0 +1,164 @@
+### 남성과 여성 파일 불러오기.
+Man <- read.csv('Man.csv', stringsAsFactors = F)
+Woman <- read.csv('Woman.csv', stringsAsFactors = F)
+Mixed <- read.csv('Mixed.csv', stringsAsFactors = F)
+
+### 성별 태깅 하기
+Man$Gender <- 'Male'
+Woman$Gender <- 'Female'
+Mixed$Gender <- 'Mixed'
+Man <- Man[,c(1,6)]
+Woman <- Woman[,c(1,6)]
+Mixed <- Mixed[,c(1,6)]
+
+### 연도 붙이기.
+publn <- read.csv('publn.csv', header = T, stringsAsFactors = F)
+colnames(publn)[1] <- 'ID'
+publn$appln_date <- substr(publn$appln_date, 1, 4)
+publn$appln_date <- as.numeric(publn$appln_date)
+Year <- publn %>%
+  group_by(ID) %>%
+  summarise(Year = mean(appln_date))
+Man <- merge(Man, Year)
+Woman <- merge(Woman, Year)
+Mixed <- merge(Mixed, Year)
+
+### ID 따로저장.
+Man_ID <- Man$ID
+Woman_ID <- Woman$ID
+Mixed_ID <- Mixed$ID
+
+
+
+### 합치기.
+Man$index = 1
+Woman$index = 1
+Mixed$index = 1
+Patent <- rbind(Man, Woman, Mixed)
+
+### 남성특허와 여성특허의 격차 살펴보기.
+Man_num <- Man %>% 
+  group_by(Year, Gender) %>% 
+  summarise(Number = sum(index))
+Woman_num <- Woman %>% 
+  group_by(Year, Gender) %>% 
+  summarise(Number = sum(index))
+Mixed_num <- Mixed%>% 
+  group_by(Year, Gender) %>% 
+  summarise(Number = sum(index))
+
+colnames(Man_num)[3] <- 'Male'
+colnames(Woman_num)[3] <- 'Female'
+colnames(Mixed_num)[3] <- 'Mixed'
+
+Patent_num <- Patent %>% group_by(Year, Gender) %>%
+  summarise(Count = sum(index))
+Patent_num_all <- Patent_num %>% group_by(Year) %>%
+  summarise(All = sum(Count))
+Patent_num <- merge(Patent_num, Patent_num_all)
+Patent_num$Count <- round(Patent_num$Count/Patent_num$All,2)
+write.csv(Patent_num, 'Patent_number_ratio.csv', row.names = F)
+
+rm(patent_num, Patent_num_all, Man_num, Woman_num, Mixed_num)
+
+
+### Grant
+publn <- read.csv('publn.csv', header = T, stringsAsFactors = F)
+colnames(publn)[1] <- 'ID'
+
+granted_patent <- publn %>%
+  group_by(ID) %>%
+  summarise(grant = max(first_grant))
+table(Year$Year)
+
+man_granted_patent <- granted_patent[granted_patent$ID %in% Man_ID,]
+woman_granted_patent <- granted_patent[granted_patent$ID %in% Woman_ID,]
+mixed_granted_patent <- granted_patent[granted_patent$ID %in% Mixed_ID,]
+
+### Count
+man_grant_count <- man_granted_patent
+woman_grant_count <- woman_granted_patent
+mixed_grant_count <- mixed_granted_patent
+
+man_grant_count$grant <- ifelse(man_grant_count$grant == 1, 'Granted', 'Not Granted')
+man_grant_count$index = 1
+woman_grant_count$grant <- ifelse(woman_grant_count$grant == 1, 'Granted', 'Not Granted')
+woman_grant_count$index = 1
+mixed_grant_count$grant <- ifelse(mixed_grant_count$grant == 1, 'Granted', 'Not Granted')
+mixed_grant_count$index = 1
+
+write.csv(man_grant_count, 'man_grant_count.csv', row.names = F)
+write.csv(woman_grant_count, 'woman_grant_count.csv', row.names = F)
+write.csv(mixed_grant_count, 'mixed_grant_count.csv', row.names = F)
+
+### granted 비율.
+man_granted_patent$index = 1
+woman_granted_patent$index = 1
+mixed_granted_patent$index = 1
+
+man_granted <- man_granted_patent %>%
+  group_by(Year) %>%
+  summarise(grant = sum(grant), index = sum(index))
+woman_granted <- woman_granted_patent %>%
+  group_by(Year) %>%
+  summarise(grant = sum(grant), index = sum(index))
+mixed_granted <- mixed_granted_patent %>%
+  group_by(Year) %>%
+  summarise(grant = sum(grant), index = sum(index))
+
+for (i in 1:length(man_granted$Year)){
+  man_granted$man_percent[i] <- 100*man_granted$grant[i]/man_granted$index[i]
+  woman_granted$woman_percent[i] <- 100*woman_granted$grant[i]/woman_granted$index[i]
+  mixed_granted$mixed_percent[i] <- 100*mixed_granted$grant[i]/mixed_granted$index[i]
+}
+
+man_granted$Gender <- 'Male'
+woman_granted$Gender <- 'Female'
+mixed_granted$Gender <- 'Mixed'
+man_granted <- man_granted[,c(1,4,5)]
+woman_granted <- woman_granted[,c(1,4,5)]
+mixed_granted <- mixed_granted[,c(1,4,5)]
+
+colnames(man_granted)[2] <- 'Grant_percent'
+colnames(woman_granted)[2] <- 'Grant_percent'
+colnames(mixed_granted)[2] <- 'Grant_percent'
+patent_granted <- rbind(man_granted, woman_granted, mixed_granted)
+write.csv(patent_granted, 'patent_granted_difference.csv', row.names = F)
+
+### grant lag
+library(lubridate)
+publn_first <- publn[publn$first_grant == 1,]
+str(publn_first)
+publn_first$appln_date <- as.Date(publn_first$appln_date)
+publn_first$publn_date <- as.Date(publn_first$publn_date)
+publn_first$interval <- as.period(interval(publn_first$appln_date, publn_first$publn_date))
+publn_first$month <- publn_first$interval@year*12 + publn_first$interval@month + round(publn_first$interval@day/30,0)
+
+man_granted_patent <- publn_first[publn_first$ID %in% Man_ID,]
+woman_granted_patent <- publn_first[publn_first$ID %in% Woman_ID,]
+mixed_granted_patent <- publn_first[publn_first$ID %in% Mixed_ID,]
+mean(man_granted_patent$month)
+mean(woman_granted_patent$month)
+mean(mixed_granted_patent$month)
+mean(publn_first$month)
+
+
+
+### Patent 항목에 추가하기.
+Man1_Patent <- man_granted_patent[,c(1,3,2)]
+Woman1_Patent <- woman_granted_patent[,c(1,3,2)]
+write.csv(Man1_Patent, 'Man1_Patent.csv', row.names = F)
+write.csv(Woman1_Patent, 'Woman1_Patent.csv', row.names = F)
+
+rm(granted_patent, man_grant_count, man_granted, man_granted_patent, woman_grant_count, woman_granted, woman_granted_patent, woman_patents_trend, man_patents_trend)
+rm(publn_first)
+rm(mixed_grant_count, mixed_granted, mixed_granted_patent)
+rm(patent_granted, Patent_num)
+
+
+AA <- read.csv('AA.csv', header =F)
+table(AA$V2, AA$V3)
+
+### 
+publn <- merge(publn, Year)
+publn <- publn[publn$Year < 1991,]
