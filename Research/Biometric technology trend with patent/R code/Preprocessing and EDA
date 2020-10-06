@@ -1,0 +1,283 @@
+### Patent data load
+setwd("C:/Users/GuestIsl/Desktop")
+pat <- read.csv('biometric_tech.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat$auth)){
+  pat$abstract[i] <- paste(pat[5:73][i,], collapse = '')
+}
+pat <- pat[c(1:4,74)]
+
+colnames(pat)[1] <- 'ID'
+pat <- pat[1:4509,]
+pat1 <- read.csv('biometric_tech2.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat1$auth)){
+  pat1$abstract[i] <- paste(pat1[5:73][i,], collapse = '')}
+pat1 <- pat1[c(1:4,74)]
+colnames(pat1)[1] <- 'ID'
+pat1 <- pat1[1:12687,]
+pat2 <- read.csv('biometric_tech3.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat2$auth)){
+  pat2$abstract[i] <- paste(pat2[5:73][i,], collapse = '')}
+pat2 <- pat2[c(1:4, 74)]
+colnames(pat2)[1] <- 'ID'
+pat2 <- pat2[1:9220,]
+pat3 <- read.csv('biometric_tech4.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat3$auth)){
+  pat3$abstract[i] <- paste(pat3[5:73][i,], collapse = '')}
+pat3 <- pat3[c(1:4, 74)]
+colnames(pat3)[1] <- 'ID'
+pat3 <- pat3[1:49,]
+pat4 <- read.csv('biometric_tech5.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat4$auth)){
+  pat4$abstract[i] <- paste(pat4[5:70][i,], collapse = '')}
+pat4 <- pat4[c(1:4, 74)]
+colnames(pat4)[1] <- 'ID'
+pat4 <- pat4[1:7122,]
+pat5 <- read.csv('biometric_tech6.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat5$auth)){
+  pat5$abstract[i] <- paste(pat5[5:70][i,], collapse = '')}
+pat5 <- pat5[c(1:4, 74)]
+colnames(pat5)[1] <- 'ID'
+pat5 <- pat5[1:6616,]
+pat6 <- read.csv('biometric_tech7.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat6$auth)){
+  pat6$abstract[i] <- paste(pat6[5:70][i,], collapse = '')}
+pat6 <- pat6[c(1:4, 74)]
+colnames(pat6)[1] <- 'ID'
+pat6 <- pat6[1:545,]
+pat7 <- read.csv('biometric_tech8.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(pat7$auth)){
+  pat7$abstract[i] <- paste(pat7[5:70][i,], collapse = '')}
+pat7 <- pat7[c(1:4, 74)]
+colnames(pat7)[1] <- 'ID'
+
+patent <- rbind(pat, pat1, pat2, pat3, pat4, pat5, pat6, pat7)
+
+### Noise Remove
+patent <- patent[nchar(patent$abstract)>30,]
+patent <- patent[nchar(patent$ID)<12,]
+patent$abstract <- gsub('NA','',patent$abstract)
+
+### index mapping
+library(dplyr)
+for (i in 1:length(patent$ID)) {
+  patent$index[i] <- i
+}
+title <- patent[c(6,2,4,5)]
+
+
+### 중복 ID 제거
+patent$ID <- factor(patent$ID)
+summary(patent$ID)
+patent$abstract <- factor(patent$abstract)
+summary(patent$abstract)
+
+patent1 <- patent %>% group_by(ID) %>% summarise(year = min(year), index = min(index))
+patent2 <- merge(patent1, title, by = c('index'))
+id <- patent2[c(1,2,4,5)]
+
+### 중복 Abstract 제거
+patent3 <- patent2 %>% group_by(abstract) %>% summarise(year = min(year), index = min(index))
+patent4 <- merge(patent3, id, by = c('index'))
+patent4 <- patent4[c(4,5,3,6,2)]
+
+summary(patent4$abstract)
+write.csv(patent4, 'tech_patent1.csv', row.names = F)
+
+patent4 <- read.csv('tech_patent1.csv', header = T, stringsAsFactors = F)
+### ID, Auth, year 범주화
+patent4$year <- factor(patent4$year)
+patent4$ID <- factor(patent4$ID)
+patent4$Auth <- factor(patent4$Auth)
+colnames(patent4) <- c('ID', 'Auth' ,'year', 'title', 'abstract')
+
+
+### biometric 기술 선별 
+x <- patent4[grep('voice',patent4$abstract, ignore.case = T),]
+x1 <- x[grep('biometric', x$abstract, ignore.case = T),]
+x2 <- x[grep('finger', x$abstract, ignore.case = T),]
+x3 <- x[grep('retina', x$abstract, ignore.case = T),]
+x4 <- x[grep('iris', x$abstract, ignore.case = T),]
+x5 <- x[grep('authenti', x$abstract, ignore.case = T),]
+x6 <- x[grep('verification', x$abstract, ignore.case = T),]
+x7 <- x[grep('verify', x$abstract, ignore.case = T),]
+x8 <- x[grep('certific', x$abstract, ignore.case = T),]
+x9 <- x[grep('unlock', x$abstract, ignore.case = T),]
+x10 <- x[grep('ENTRANCE', x$abstract, ignore.case = T),]
+x11 <- x[grep('access control', x$abstract, ignore.case = T),]
+x12 <- x[grep('identif', x$title, ignore.case = T),]
+x13 <- x[grep('verif', x$title, ignore.case = T),]
+x14 <- x[grep('authenti', x$title, ignore.case = T),]
+x15 <- x[grep('eeg', x$abstract, ignore.case = T),]
+x16 <- x[grep('gait', x$abstract, ignore.case = T),]
+x17 <- x[grep('biometric', x$title, ignore.case = T),]
+xx <- rbind(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17)
+
+for (i in 1:length(xx$ID)) {
+  xx$index[i] <- i
+}
+title <- xx[c(6,2,4,5)]
+
+
+
+### 중복 ID 제거하기
+xx$ID <- factor(patent$ID)
+summary(patent$ID)
+patent$abstract <- factor(patent$abstract)
+summary(patent$abstract)
+patent4$year <- as.character(patent4$year)
+patent4$year <- as.numeric(patent4$year)
+patent4$ID <- as.character(patent4$ID)
+patent4$ID <- as.numeric(patent4$ID)
+
+
+xx1 <- xx %>% group_by(ID) %>% summarise(year = min(year), index = min(index))
+xx2 <- merge(xx1, title, by = c('index'))
+xx2 <- xx2[c(2,4,3,5,6)]
+xx2$year <- factor(xx2$year)
+
+xxx <- patent4[-grep('voice',patent4$abstract, ignore.case = T),]
+patent4 <- rbind(xx2, xxx)
+patent4 <- patent4[order(patent4$year, patent4$ID),]
+
+### 분야별 특허 수 트렌드
+library(ggplot2)
+ggplot(data = patent4, aes(x = year)) +
+  geom_bar() +
+  ggtitle('Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+### ?????? ?????? Ư?? ???? ??ȭ
+table(patent4$Auth)
+cn_patent <- patent4[patent4$Auth == 'CN',]
+us_patent <- patent4[patent4$Auth == 'US',]
+ep_patent <- patent4[patent4$Auth == 'EP',]
+jp_patent <- patent4[patent4$Auth == 'JP',]
+kr_patent <- patent4[patent4$Auth == 'KR',]
+
+
+ggplot(data = cn_patent, aes(x = year)) +
+  geom_bar() +
+  ggtitle('China Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = us_patent, aes(x = year)) +
+  geom_bar() +
+  ggtitle('US Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = jp_patent, aes(x = year)) +
+  geom_bar() +
+  ggtitle('Japan Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = kr_patent, aes(x = year)) +
+  geom_bar() +
+  ggtitle('Korea Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = ep_patent, aes(x = year)) +
+  geom_bar() +
+  ggtitle('EP Biometric Patent Trends') +
+  ylab('Patent Counts') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+### 파일로 저장
+x <- table(patent4$Auth, patent4$year)
+x <- data.frame(x)
+colnames(x) <- c('Auth', 'year', 'Freq')
+write.csv(x, 'x.csv', row.names = F)
+
+### 발명 도시
+country <- read.csv('person_city.csv', header = F, stringsAsFactors = T)
+colnames(country) <- c('ID', 'country')
+country$ID <- as.character(country$ID)
+country$ID[1] <- '140'
+patent41 <- merge(patent4, country, by = 'ID')
+
+cn_patent <- patent41[patent41$Auth == 'CN',]
+us_patent <- patent41[patent41$Auth == 'US',]
+ep_patent <- patent41[patent41$Auth == 'EP',]
+jp_patent <- patent41[patent41$Auth == 'JP',]
+kr_patent <- patent41[patent41$Auth == 'KR',]
+
+table(jp_patent$country)
+
+
+
+### 발명가 매핑
+person <- read.csv('People.csv', header = T, stringsAsFactors = F)
+for(i in 1:length(person$ID)){
+  person$name[i] <- paste(person[2:10][i,], collapse = '')
+}
+person <- person[c(1,11)]
+patent <- patent4
+patent$ID <- as.character(patent$ID)
+person$name <- gsub('NA','', person$name)
+person1 <- subset(person, ID %in% unique(patent$ID))
+person2 <- merge(person1, patent4[c(1,2)], by = 'ID')
+
+
+
+#### sorting
+sort(table(person2$name), decreasing = T)[31:50]
+
+
+#### IPC 맵핑
+ipc <- read.csv('IPC.csv', header = T, stringsAsFactors = F)
+colnames(ipc) <- c('ID', 'IPC')
+
+### IPC 4 digits
+ipc_four_digits <- ipc
+
+for (i in 1:length(ipc_four_digits$ID)) {
+  ipc_four_digits$IPC[i] <- substr(ipc_four_digits$IPC[i],1,4)
+}
+for (i in 1:length(ipc_four_digits$ID)) {
+  ipc_four_digits$idx[i] <- i
+}
+
+library(dplyr)
+ipc_four_digits <- ipc_four_digits %>% group_by(ID, IPC) %>%
+  summarise(idx = sum(idx))
+ipc_four_digits <- ipc_four_digits[1:2]
+ipc_four_digits <- merge(patent4[1:2], ipc_four_digits, by = 'ID')
+
+ipc_four_digits1 <- subset(ipc_four_digits, ipc_four_digits$ID %in% unique(patent4$ID))
+length(unique(ipc_four_digits1$ID))
+ipc3 <- ipc_four_digits1
+
+cn_ipc3 <- ipc3[ipc3$Auth == 'CN',]
+us_ipc3 <- ipc3[ipc3$Auth == 'US',]
+ep_ipc3 <- ipc3[ipc3$Auth == 'EP',]
+jp_ipc3 <- ipc3[ipc3$Auth == 'JP',]
+kr_ipc3 <- ipc3[ipc3$Auth == 'KR',]
+
+sort(table(cn_ipc3$IPC), decreasing = T)
+sort(table(us_ipc3$IPC), decreasing = T)
+sort(table(jp_ipc3$IPC), decreasing = T)
+sort(table(kr_ipc3$IPC), decreasing = T)
+sort(table(ep_ipc3$IPC), decreasing = T)
+
+### IPC 8 digits
+for (i in 1:length(ipc$ID)) {
+  ipc$idx[i] <- i
+}
+ipc <- ipc %>% group_by(ID, IPC) %>%
+  summarise(idx = sum(idx))
+ipc <- ipc[1:2]
+length(unique(ipc1$ID))
+sort(table(ipc1$IPC), decreasing = T)
+ipc1 <- subset(ipc, ipc$ID %in% unique(patent4$ID))
+
+
