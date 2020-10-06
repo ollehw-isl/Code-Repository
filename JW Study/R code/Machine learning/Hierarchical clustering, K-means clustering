@@ -1,0 +1,43 @@
+#데이터 불러오기
+german<-read.csv("German_credit.csv")
+
+# age credit_amount duration_in_month installment_rate num_of_existing_credits num_of_people_liable present_residence
+german_1 <- german[, c(3,6,9,12,14,17,19)]
+
+# FA
+fa_g <- factanal(german_1, factors=3, rotation="varimax", scores = "regression") # varimax is the default
+
+# Clustering
+german_2 <- fa_g$scores
+
+d <- dist(german_2, method="euclidean")
+# distance matrix
+# method="euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski"
+
+C1 <- hclust(d, method="ward.D2")
+# method="ward.D2", "single", "complete", "average","centroid"
+
+plot(C1) # display dendogram
+
+C1_groups <- cutree(C1, k=5) # cut tree into 3 clusters
+rect.hclust(C1, k=5, border="red")
+
+german_3 <- cbind(german_2, C1_groups) #cluster와 원데이터 통합
+
+#군집별 평균 구하기
+german_3<-as.data.frame(german_3) #german_3가 행렬형태라 list의 조합인 데이터프레임으로 바꿔줘야함.
+install.packages('dplyr')
+library(dplyr)
+german_3[,4]<-as.data.frame(german_3[,4])
+german_3%>%group_by(C1_groups)%>%summarise(mean_Factor1=mean(Factor1),mean_Factor2=mean(Factor2),mean_Factor3=mean(Factor3)) #각 군집별 평균
+
+pairs(german_3, main="German Clustering", pch=22, bg=c("red", "yellow", "blue")[unclass(german_3$C1_groups)])
+
+#K-means 방법- PC를 구해서, randomly select centroids, 하나씩 추가
+install.packages('cluster')
+library(cluster)
+
+german_3 = german_3[,-4]
+C2 <- kmeans(german_3, 5)
+C2$cluster
+clusplot(german_3, C2$cluster, color=TRUE, lines=0)
