@@ -1,0 +1,84 @@
+library(dplyr)
+head(ap_lda_compare[[5]])
+colnames(lda.topics_remove_topic) <- c('Topic1', 'Topic2', 'Topic3', 'Topic4', 'Topic5', 'Topic6', 
+                              'Topic7', 'Topic8', 'Topic9', 'Topic10', 'Topic11', 'Topic12', 'Topic13', 
+                              'Topic14', 'Topic15', 'Topic16', 'Topic17', 'Topic18', 'Topic19', 'Topic20', 
+                              'Topic21', 'Topic22', 'Topic23', 'Topic24', 'Topic25', 'Topic26', 'Topic27', 
+                              'Topic28', 'Topic29', 'Topic30', 'Topic31', 'Topic32', 'Topic33', 'Topic34', 
+                              'Topic35', 'Topic36', 'Auth', 'year')
+
+lda.two.topic <- lda.topics_remove_topic
+
+for (i in 1:37462){
+  lda.two.topic[i,which(lda.two.topic[i,1:36] == max(lda.two.topic[i,1:36]))] = 1
+}
+
+for (i in 1:36){
+  for (j in 1:37462){
+    lda.two.topic[j,i] = ifelse(lda.two.topic[j,i] > 0.99 , 1, 0) 
+  }
+}
+
+lda.two.topic.year <- lda.two.topic %>% group_by(Auth) %>%
+  summarise(Topic1 = sum(Topic1), Topic2 = sum(Topic2), Topic3 = sum(Topic3), Topic4 = sum(Topic4), Topic5 = sum(Topic5),
+            Topic6 = sum(Topic6), Topic7 = sum(Topic7), Topic8 = sum(Topic8), Topic9 = sum(Topic9),
+            Topic10 = sum(Topic10), Topic11 = sum(Topic11), Topic12 = sum(Topic12), 
+            Topic13 = sum(Topic13), Topic14 = sum(Topic14), Topic15 = sum(Topic15),
+            Topic16 = sum(Topic16), Topic17 = sum(Topic17), Topic18 = sum(Topic18), 
+            Topic19 = sum(Topic19), Topic20 = sum(Topic20), Topic21 = sum(Topic21),
+            Topic22 = sum(Topic22), Topic23 = sum(Topic23), Topic24 = sum(Topic24), 
+            Topic25 = sum(Topic25), Topic26 = sum(Topic26), Topic27 = sum(Topic27),
+            Topic28 = sum(Topic28), Topic29 = sum(Topic29), Topic30 = sum(Topic30),
+            Topic31 = sum(Topic31), Topic32 = sum(Topic32), Topic33 = sum(Topic33),
+            Topic34 = sum(Topic34), Topic35 = sum(Topic35), X36Topic = sum(Topic36))
+lda.two.topic$index = 1
+lda.one.topic.year <- lda.two.topic %>% group_by(Auth) %>%
+  summarise(Topic1 = sum(Topic1), Topic2 = sum(Topic2), Topic3 = sum(Topic3), Topic4 = sum(Topic4), Topic5 = sum(Topic5),
+            Topic6 = sum(Topic6), Topic7 = sum(Topic7), Topic8 = sum(Topic8), Topic9 = sum(Topic9),
+            Topic10 = sum(Topic10), Topic11 = sum(Topic11), Topic12 = sum(Topic12), 
+            Topic13 = sum(Topic13), Topic14 = sum(Topic14), Topic15 = sum(Topic15),
+            Topic16 = sum(Topic16), Topic17 = sum(Topic17), Topic18 = sum(Topic18), 
+            Topic19 = sum(Topic19), Topic20 = sum(Topic20), Topic21 = sum(Topic21),
+            Topic22 = sum(Topic22), Topic23 = sum(Topic23), Topic24 = sum(Topic24), 
+            Topic25 = sum(Topic25), Topic26 = sum(Topic26), Topic27 = sum(Topic27),
+            Topic28 = sum(Topic28), Topic29 = sum(Topic29), Topic30 = sum(Topic30),
+            Topic31 = sum(Topic31), Topic32 = sum(Topic32), Topic33 = sum(Topic33),
+            Topic34 = sum(Topic34), Topic35 = sum(Topic35), Topic36 = sum(Topic36), all = sum(index))
+
+lda.one.topic.year_percent = lda.one.topic.year
+for(j in 2:37){
+  for (i in 1:27){
+    lda.one.topic.year_percent[i,j] = lda.one.topic.year_percent[i,j]/lda.one.topic.year_percent[i,38]
+  }
+}
+lda.one.topic.year_percent$Year = 1990:2016
+lda.one.topic.year_percent_2004 = lda.one.topic.year_percent[lda.one.topic.year_percent$Year>2003,]
+write.csv(lda.one.topic.year_percent_2004, 'topic_trend.csv', row.names = F)
+
+topic_trend = data.frame(Year = rep(2004:2016, 17),
+                         Topic = c(rep('Topic 1', 13),rep('Topic 10', 13),rep('Topic 23', 13),
+                                   rep('Topic 30', 13),rep('Topic 32', 13),rep('Topic 34', 13),
+                                   rep('Topic 35', 13),rep('Topic 6', 13),rep('Topic 25', 13),
+                                   rep('Topic 31', 13),rep('Topic 12', 13),rep('Topic 11', 13),
+                                   rep('Topic 15', 13),rep('Topic 22', 13),rep('Topic 26', 13),
+                                   rep('Topic 29', 13),rep('Topic 3', 13)),
+                         Proportion = c(lda.one.topic.year_percent_2004$Topic1,
+                                        lda.one.topic.year_percent_2004$Topic10,
+                                        lda.one.topic.year_percent_2004$Topic23,
+                                        lda.one.topic.year_percent_2004$Topic30,
+                                        lda.one.topic.year_percent_2004$Topic32,
+                                        lda.one.topic.year_percent_2004$Topic34,
+                                        lda.one.topic.year_percent_2004$Topic35,
+                                        lda.one.topic.year_percent_2004$Topic6,
+                                        lda.one.topic.year_percent_2004$Topic25,
+                                        lda.one.topic.year_percent_2004$Topic31,
+                                        lda.one.topic.year_percent_2004$Topic12,
+                                        lda.one.topic.year_percent_2004$Topic11,
+                                        lda.one.topic.year_percent_2004$Topic15,
+                                        lda.one.topic.year_percent_2004$Topic22,
+                                        lda.one.topic.year_percent_2004$Topic26,
+                                        lda.one.topic.year_percent_2004$Topic29,
+                                        lda.one.topic.year_percent_2004$Topic3),
+                         Type = c(rep('Cold',91), rep('Hot', 52), rep('Active',78)))
+
+write.csv(topic_trend, 'topic_trend_2004.csv', row.names = F)
