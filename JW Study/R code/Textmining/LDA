@@ -1,0 +1,87 @@
+### Topic 수 정하기
+######## Homonic Mean 
+install.packages('Rmpfr')
+library(Rmpfr)
+harmonicMean <- function(logLikelihoods, precision=2000L) {
+  llMed <- median(logLikelihoods)
+  as.double(llMed - log(mean(exp(-mpfr(logLikelihoods,
+                                       prec=precision) + llMed))))
+}
+
+n_topics <- c(5, 10, 20, 30, 40, 50)
+burnin <- 1000
+iter <- 1000
+keep <- 50
+
+fitted_many <- lapply(n_topics, function(k) LDA(pat.dtm, k=k, method="Gibbs", control=list(burnin=burnin, iter=iter, keep=keep)))
+
+logLiks_many <- lapply(fitted_many, function(L) L@logLiks[-c(1:(burnin/keep))])
+
+hm_many <- sapply(logLiks_many, function(h) harmonicMean(h))
+
+ggplot(data.frame(n_topics, hm_many), aes(x=n_topics, y=hm_many)) +
+  geom_path(lwd=1.5) +
+  theme(text=element_text(family=NULL),
+        axis.title.y=element_text(vjust=1, size=16),
+        axis.title.x=element_text(vjust=-.5, size=16),
+        axis.text=element_text(size=16),
+        plot.title=element_text(size=20)) +
+  xlab('Number of Topics') +
+  ylab('Harmonic Mean') +
+  ggplot2::annotate("text", x=9, y=-199000, label=paste("The optimal number of topics is", n_topics[which.max(hm_many)])) +
+  labs(title="Latent Dirichlet Allocation Analysis",
+       subtitle="How many distinct topics?")
+
+
+
+
+
+######## perplexity 
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+library(stringr)
+
+ap_lda_compare <- n_topics %>%
+  map(LDA, x = pat.dtm, control = list(seed = 1109))
+
+data_frame(k = n_topics,
+           perplex = map_dbl(ap_lda_compare, perplexity)) %>%
+  ggplot(aes(k, perplex)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Evaluating LDA topic models",
+       subtitle = "Optimal number of topics (smaller is better)",
+       x = "Number of topics",
+       y = "Perplexity") +
+  theme_bw()
+
+
+
+ap_lda_compare2 <- n_topics %>%
+  map(LDA, x = pat.dtm2, control = list(seed = 1109))
+
+data_frame(k = n_topics,
+           perplex = map_dbl(ap_lda_compare2, perplexity)) %>%
+  ggplot(aes(k, perplex)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Evaluating LDA topic models",
+       subtitle = "Optimal number of topics (smaller is better)",
+       x = "Number of topics",
+       y = "Perplexity")
+
+y <- data.frame(No. <- n_topics, Harmonic_mean <- hm_many, Perplexity <- map_dbl(ap_lda_compare, perplexity))
+colnames(y) <- c('No. Topics', 'Harmonic mean', 'Perplexity')
+write.csv(y, 'topic_num.csv', row.names = F)
+
+
+### LDA
+library(topicmodels)
+i=522
+a= 1.25
+k = 40
+beta = 0.1
+
+lda.out1 = LDA(pat.dtm, control = list(seed=i+141, alpha = a), k = 40)
+terms(lda.out1, 9) 
