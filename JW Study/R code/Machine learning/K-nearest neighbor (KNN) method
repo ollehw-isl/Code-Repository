@@ -1,0 +1,39 @@
+## 데이터 불러오기.
+german <- read.csv('German_credit.csv')
+table(german$Credit_status)
+
+# stratified_sampling
+library(sampling)
+ss <- strata(german, stratanames = c("Credit_status"), size =c(300,300), method="srswor")
+ss <- getdata(german, ss)
+
+# data partition
+library(caret)
+train <- createDataPartition(ss$ID, p=0.7, list=FALSE)
+valid <- ss[-train,]
+train <- ss[train,]
+
+table(train$Credit_status)
+
+# CBR
+library(FNN)
+# Classification
+knn(train=train[, c(2:21)], test=valid[, c(2:21)], cl=train$Credit_status, k = 5,
+    prob = FALSE, algorithm=c("kd_tree")) # "cover_tree", "brute", "CR"
+
+knn.cv(train=train[, c(2:21)], cl=train$Credit_status, k = 5,
+       prob = FALSE, algorithm=c("kd_tree")) # "cover_tree", "brute"
+
+# Regression
+train_reg <- cbind(train[, c(2:13)], train[, c(15:21)])
+reg <- knn.reg(train=train_reg, test = NULL, y=train$Age, k = 5,
+               algorithm=c("kd_tree")) # "cover_tree", "brute"
+reg$pred
+
+# Weighted KNN
+library(kknn)
+require(igraph)
+wknn <- kknn(train[,c(2:22)]$Credit_status~., train = train[,c(2:22)], test = valid[,c(2:21)],
+             k = 5, distance = 1, kernel = "triangular")
+
+wknn$fitted.values
