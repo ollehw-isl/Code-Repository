@@ -1,0 +1,32 @@
+# PCA
+# age credit_amount duration_in_month installment_rate num_of_existing_credits num_of_people_liable present_residence
+german <- read.csv('German_credit.csv')
+german_1 <- german[, c(3,6,9,12,14,17,19)]
+summary(german_1)
+
+german_scaled <- scale(german_1, center = TRUE, scale = TRUE)
+plot(german_scaled)
+
+dat_cov = cov(german_scaled)
+dat_cor = cor(german_scaled)
+
+pca_cov <- prcomp(german_scaled, covmat=dat_cov) # cov # stdev2 = lambda
+pca_cor <- prcomp(german_scaled, covmat=dat_cor) # corr # stdev2 = lambda
+
+eigenv <- pca_cor$sdev^2
+x <- seq(1:ncol(german_scaled)) # x축
+plot(x, eigenv, main="Scree plot", type="b", xlab="Number", ylab="Eigen value")
+
+plot(pca_cor, type="lines")
+
+biplot(pca_cor)
+summary(pca_cor)
+
+# FA
+fa_g <- factanal(german_scaled, factors=3, rotation="varimax", scores = "regression") # varimax is the default
+
+load <- fa_g$loadings
+load
+
+plot(load[,1:2],type="n") # plot factor 1 by 2
+text(load[,1:2],labels=colnames(german_scaled),cex=.7) # add variable names
