@@ -1,0 +1,810 @@
+### 자동차 관련 IPC 4자리
+Car <- c('B60B', 'B60D', 'B60G', 'B60H', 'B60J', 'B60K', 'B60L', 
+         'B60N', 'B60P', 'B60Q', 'B60R', 'B60S', 'B60T', 'B60W', 'B62D', 
+         'E01H', 'F01L', 'F01M', 'F01N', 'F01P', 'F02B', 'F02D', 'F02F', 
+         'F02G', 'F02M', 'F02N', 'F02P', 'F16J', 'G01P', 'G05D', 'G05G')
+
+### 통신 관련 IPC 4자리
+Tel <- c('G09B', 'G09C', 'H01P', 'H01Q', 'H01S', 'H02J', 'H03B', 
+         'H03C', 'H03D', 'H03F', 'H03G', 'H03H', 'H03M', 'H04B', 
+         'H04J', 'H04K', 'H04L', 'H04M', 'H04Q', 'H04W', 'H05K')
+
+
+### 통신기술 데이터 불러오기.
+Tele <- read.csv('Telecommunication.csv', header = T)
+colnames(Tele)[1] <-'ID'
+table(Tele$Year)
+
+length(unique(Tele$ID)) ## 768,989
+
+### 연도별 개수 파악하기.
+library(dplyr)
+Tele$index = 1
+Tele_patent_num_by_Year <- Tele %>% group_by(Year) %>%
+  summarise(num = sum(index))
+write.csv(Tele_patent_num_by_Year, 'Tele_patent_num_by_Year.csv', row.names = F)
+
+### 현대차가 가지고 있는 특허의 IPC 분포 확인하기.
+Hyundai <- read.csv('Hyundai.csv', header = T)
+colnames(Hyundai)[1] <-'ID'
+length(unique(Hyundai$ID))
+Hyundai$IPC <- substr(Hyundai$IPC, 1, 4)
+Hyundai$index = 1
+Hyundai <- Hyundai %>% group_by(ID, Year, Auth, IPC) %>%
+  summarise(index = mean(index))
+Hyundai <- Hyundai[Hyundai$IPC %in% Car,]
+Hyundai <- Hyundai[Hyundai$Auth == 'KR',]
+Hyundai_ipc <- Hyundai %>%
+  group_by(IPC) %>%
+  summarise(num = sum(index))
+Hyundai_ipc <- Hyundai_ipc[order(Hyundai_ipc$num, decreasing = T),]
+Hyundai_ipc$num = Hyundai_ipc$num/length(unique(Hyundai$ID))
+Hyundai_ipc[32,] <- c('G60G', 0)
+Hyundai_ipc$num <- as.numeric(Hyundai_ipc$num)
+Hyundai_ipc_top_10 <- Hyundai_ipc[1:10,]
+write.csv(Hyundai_ipc_top_10, 'Hyundai_ipc.csv', row.names = F)
+Hyundai_ipc
+
+### 현대차가 보유하고 있는 자동차 특허
+Hyundai_patent_num <- Hyundai %>% 
+  group_by(ID, Year) %>%
+  summarise(index = mean(index))
+Hyundai_patent_num <- Hyundai_patent_num %>%
+  group_by(Year) %>%
+  summarise(number = sum(index))
+lines(Hyundai_patent_num)
+
+### 자동차 IPC
+Vehicle_ipc <- read.csv('Vehicle IPC.csv', header = F)
+colnames(Vehicle_ipc) <- c('ID', 'Year', 'IPC')
+Vehicle_ipc[1,1] <- 45876590
+length(unique(Vehicle_ipc$ID))
+Vehicle_ipc$IPC <- substr(Vehicle_ipc$IPC, 1, 4)
+Vehicle_ipc$index = 1
+Vehicle_ipc <- Vehicle_ipc %>% group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+Vehicle_ipc <- Vehicle_ipc[Vehicle_ipc$IPC %in% c(Tel, Car),]
+sort(table(Vehicle_ipc$IPC),decreasing = T)
+
+### 통신 IPC
+Tel_ipc <- read.csv('Telecommunication IPC.csv', header = F)
+colnames(Tel_ipc) <- c('ID', 'Year', 'IPC')
+Tel_ipc[1,1] <- 47364104
+Tel_ipc$IPC <- substr(Tel_ipc$IPC, 1, 4)
+Tel_ipc$index = 1
+Tel_ipc <- Tel_ipc %>% group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+Tel_ipc <- Tel_ipc[Tel_ipc$IPC %in% c(Tel, Car),]
+sort(table(Tel_ipc$IPC),decreasing = T)
+
+### IPC 분포.
+Vehicle_ipc_dist <- Vehicle_ipc %>% 
+  group_by(IPC) %>%
+  summarise(number = sum(index))
+Vehicle_ipc_dist <- Vehicle_ipc_dist[order(Vehicle_ipc_dist$number, decreasing = T),]  
+Vehicle_ipc_dist$number <- Vehicle_ipc_dist$number / length(unique(Vehicle_ipc$ID))
+
+Tel_ipc_dist <- Tel_ipc %>%
+  group_by(IPC) %>%
+  summarise(number = sum(index))
+Tel_ipc_dist <- Tel_ipc_dist[order(Tel_ipc_dist$number, decreasing = T),]  
+Tel_ipc_dist$number <- Tel_ipc_dist$number / length(unique(Tel_ipc$ID))
+
+Vehicle_ipc_dist <- Vehicle_ipc_dist[1:5,]
+Tel_ipc_dist <- Tel_ipc_dist[1:5,]
+
+Vehicle_ipc_dist$Field = 'Vehicle'
+Tel_ipc_dist$Field = 'ICT'
+
+IPC_dist <- rbind(Vehicle_ipc_dist, Tel_ipc_dist)
+
+write.csv(IPC_dist, 'IPC_dist.csv', row.names = F)
+
+
+
+### 자동차 특허의 개수 변화
+Vehicle_patent_num <- Vehicle_ipc %>% 
+  group_by(ID, Year) %>%
+  summarise(index = mean(index))
+Vehicle_patent_num <- Vehicle_patent_num %>%
+  group_by(Year) %>%
+  summarise(number = sum(index))
+write.csv(Vehicle_patent_num, 'Vehicle_patent_num.csv', row.names = F)
+
+### 합치기
+All_IPC_combination <- rbind(Vehicle_ipc, Tel_ipc)
+All_IPC_combination$index = 1
+All_IPC_combination <- All_IPC_combination %>%
+  group_by(ID, Year, IPC) %>%
+  summarise(index = mean(index))
+
+
+### 연도분할
+period1 <- All_IPC_combination[All_IPC_combination$Year < 2007,]
+period2 <- All_IPC_combination[All_IPC_combination$Year > 2006 & All_IPC_combination$Year < 2012 ,]
+period3 <- All_IPC_combination[All_IPC_combination$Year > 2011,]
+
+length(unique(period1$ID))
+length(unique(period2$ID))
+length(unique(period3$ID))
+
+
+
+table(period1$IPC)
+### 조합 유무
+IPC <- c(Car, Tel)
+IPC_num <- length(IPC)
+Co_IPC_matrix_period1 <- matrix(rep(0, IPC_num*IPC_num), nrow = IPC_num)
+IPC_patent_list <- list()
+for (i in 1:length(IPC)){
+  IPC_first <- IPC[i]
+  IPC_first_patent <- period1[period1$IPC == IPC_first, ]
+  IPC_patent_list[[i]] <- unique(IPC_first_patent$ID)
+}
+
+for (i in 1:length(IPC)){
+  for (j in 1:length(IPC)){
+    if (i == j){
+      Co_IPC_matrix_period1[i,j] = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        Co_IPC_matrix_period1[i,j] = 0
+      }else {
+        Co_IPC_matrix_period1[i,j] = 1
+      }
+    }
+  }
+}
+
+row.names(Co_IPC_matrix_period1) <- IPC
+colnames(Co_IPC_matrix_period1) <- IPC
+
+
+Co_IPC_matrix_period1
+sum(Co_IPC_matrix_period1)
+
+
+### similarity 계산.
+library(igraph)
+library(linkprediction)
+
+period1_data <- data.frame(IPC1=c(1), IPC2=c(1), from=c(1), to=c(1))
+for(i in 1:length(Car)){
+  period1_data <- rbind(period1_data, data.frame(IPC1=c(rep(Car[i],length(Tel))), IPC2=c(Tel), from=c(rep(i, length(Tel))), to=c(32:52)))
+}
+period1_data <- period1_data[-1,]
+row.names(period1_data) <- NULL
+
+Co_IPC_graph_period1 <- graph.adjacency(Co_IPC_matrix_period1, mode="undirected", weighted=NULL) 
+plot(Co_IPC_graph_period1, main = 'Period 1')
+
+### Common neighbours
+z <- proxfun(Co_IPC_graph_period1, method = 'cn', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'CN'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$CN), 0, period1_data$CN)
+
+### Jaccard
+z <- proxfun(Co_IPC_graph_period1, method = 'jaccard', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'Jaccard'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$Jaccard), 0, period1_data$Jaccard)
+
+### Cosine
+z <- proxfun(Co_IPC_graph_period1, method = 'cos', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'Cosine'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$Cosine), 0, period1_data$Cosine)
+
+### Sorensen
+z <- proxfun(Co_IPC_graph_period1, method = 'sor', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'Sorensen'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$Sorensen), 0, period1_data$Sorensen)
+
+### Hub Promoted Index
+z <- proxfun(Co_IPC_graph_period1, method = 'hpi', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'HPI'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$HPI), 0, period1_data$HPI)
+
+### Hub Depressed Index
+z <- proxfun(Co_IPC_graph_period1, method = 'hdi', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'HDI'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$HDI), 0, period1_data$HDI)
+
+### Leicht-Holme-Newman Index (Local)
+z <- proxfun(Co_IPC_graph_period1, method = 'lhn_local', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'lhn_local'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$lhn_local), 0, period1_data$lhn_local)
+
+### Preferential Attachment
+z <- proxfun(Co_IPC_graph_period1, method = 'pa', value = 'edgelist', V1 = IPC_period_1, V2= IPC_period_1)
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'PA'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$PA), 0, period1_data$PA)
+
+### Adamic–Adar Index
+z <- proxfun(Co_IPC_graph_period1, method = 'aa', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'AAI'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$AAI), 0, period1_data$AAI)
+
+### Resource Allocation Index
+z <- proxfun(Co_IPC_graph_period1, method = 'ra', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'RA'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$RA), 0, period1_data$RA)
+
+### Katz Index
+z <- proxfun(Co_IPC_graph_period1, method = 'katz', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'Katz'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$Katz), 0, period1_data$Katz)
+
+### Leicht-Holme-Newman Index (Global)
+z <- proxfun(Co_IPC_graph_period1, method = 'lhn_global', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'lhn_global'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$lhn_global), 0, period1_data$lhn_global)
+
+### Average Commute Time
+z <- proxfun(Co_IPC_graph_period1, method = 'act', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'ACT'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$ACT), 0, period1_data$ACT)
+
+### Normalized Average Commute Time
+z <- proxfun(Co_IPC_graph_period1, method = 'act_n', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'ACT_Normalized'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$ACT_Normalized), 0, period1_data$ACT_Normalized)
+
+### Random Walk with Restart
+z <- proxfun(Co_IPC_graph_period1, method = 'rwr', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'RWR'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$RWR), 0, period1_data$RWR)
+
+### Matrix Forest Index
+z <- proxfun(Co_IPC_graph_period1, method = 'mf', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'MF'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$MF), 0, period1_data$MF)
+
+### Shortest Paths
+z <- proxfun(Co_IPC_graph_period1, method = 'dist', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'dist'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$dist), 0, period1_data$dist)
+
+### Local Path Index
+z <- proxfun(Co_IPC_graph_period1, method = 'lp', value = 'edgelist')
+period1_data <- merge(period1_data, z, by = c('from', 'to'), all.x = T)
+colnames(period1_data)[length(period1_data)] <- 'LP'
+period1_data[length(period1_data)] <- ifelse(is.na(period1_data$LP), 0, period1_data$LP)
+
+period1_data <- period1_data[,3:22]
+cor(period1_data[,3:20])
+
+### 기존 융합 정보 추가
+link_period1 <- data.frame(IPC1=c(1), IPC2=c(1), prior_link = c(1))
+for(i in 1:length(IPC)){
+  for(j in 1:length(IPC)){
+    first_ipc = IPC[i]
+    second_ipc = IPC[j]
+    if (i == j){
+      link = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        link = 0
+      }else {
+        link = 1
+      }
+    }
+    link_period1 <- rbind(link_period1, data.frame(IPC1=first_ipc, IPC2=second_ipc, prior_link = link))
+  }
+}
+period1_data <- merge(period1_data, link_period1, by = c('IPC1', 'IPC2'))
+period1_data$prior_link <- as.factor(period1_data$prior_link)
+
+
+
+### min-max 정규화.
+minmax <- function(x) {
+  x = (x-min(x))/(max(x)-min(x))
+}
+
+for(i in 3:length(period1_data)){
+  period1_data[i] <- minmax(period1_data[i])
+}
+
+
+
+
+
+formu <- as.formula(paste(colnames()))
+library(randomForest)
+rf_model <- randomForest(link ~., data = period1_data[,-c(1,2)])
+pred_rf <- predict(rf_model, period1_data)
+library(caret)
+confusionMatrix(pred_rf, period1_data$link)
+
+
+#########################################################  구간 2
+### 조합 유무
+IPC <- c(Car, Tel)
+IPC_num <- length(IPC)
+Co_IPC_matrix_period2 <- matrix(rep(0, IPC_num*IPC_num), nrow = IPC_num)
+IPC_patent_list <- list()
+for (i in 1:length(IPC)){
+  IPC_first <- IPC[i]
+  IPC_first_patent <- period2[period2$IPC == IPC_first, ]
+  IPC_patent_list[[i]] <- unique(IPC_first_patent$ID)
+}
+
+for (i in 1:length(IPC)){
+  for (j in 1:length(IPC)){
+    if (i == j){
+      Co_IPC_matrix_period2[i,j] = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        Co_IPC_matrix_period2[i,j] = 0
+      }else {
+        Co_IPC_matrix_period2[i,j] = 1
+      }
+    }
+  }
+}
+
+row.names(Co_IPC_matrix_period2) <- IPC
+colnames(Co_IPC_matrix_period2) <- IPC
+
+
+Co_IPC_matrix_period1
+sum(Co_IPC_matrix_period2)
+
+
+### similarity 계산.
+library(igraph)
+library(linkprediction)
+
+period2_data <- data.frame(IPC1=c(1), IPC2=c(1), from=c(1), to=c(1))
+for(i in 1:length(Car)){
+  period2_data <- rbind(period2_data, data.frame(IPC1=c(rep(Car[i],length(Tel))), IPC2=c(Tel), from=c(rep(i, length(Tel))), to=c(32:52)))
+}
+period2_data <- period2_data[-1,]
+row.names(period2_data) <- NULL
+
+Co_IPC_graph_period2 <- graph.adjacency(Co_IPC_matrix_period2, mode="undirected", weighted=NULL) 
+plot(Co_IPC_graph_period2)
+
+### Common neighbours
+z <- proxfun(Co_IPC_graph_period2, method = 'cn', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'CN'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$CN), 0, period2_data$CN)
+
+### Jaccard
+z <- proxfun(Co_IPC_graph_period2, method = 'jaccard', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'Jaccard'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$Jaccard), 0, period2_data$Jaccard)
+
+
+### Cosine
+z <- proxfun(Co_IPC_graph_period2, method = 'cos', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'Cosine'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$Cosine), 0, period2_data$Cosine)
+
+### Sorensen
+z <- proxfun(Co_IPC_graph_period2, method = 'sor', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'Sorensen'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$Sorensen), 0, period2_data$Sorensen)
+
+### Hub Promoted Index
+z <- proxfun(Co_IPC_graph_period2, method = 'hpi', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'HPI'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$HPI), 0, period2_data$HPI)
+
+### Hub Depressed Index
+z <- proxfun(Co_IPC_graph_period2, method = 'hdi', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'HDI'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$HDI), 0, period2_data$HDI)
+
+### Leicht-Holme-Newman Index (Local)
+z <- proxfun(Co_IPC_graph_period2, method = 'lhn_local', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'lhn_local'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$lhn_local), 0, period2_data$lhn_local)
+
+### Preferential Attachment
+z <- proxfun(Co_IPC_graph_period2, method = 'pa', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'PA'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$PA), 0, period2_data$PA)
+
+### Adamic–Adar Index
+z <- proxfun(Co_IPC_graph_period2, method = 'aa', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'AAI'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$AAI), 0, period2_data$AAI)
+
+### Resource Allocation Index
+z <- proxfun(Co_IPC_graph_period2, method = 'ra', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'RA'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$RA), 0, period2_data$RA)
+
+### Katz Index
+z <- proxfun(Co_IPC_graph_period2, method = 'katz', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'Katz'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$Katz), 0, period2_data$Katz)
+
+### Leicht-Holme-Newman Index (Global)
+z <- proxfun(Co_IPC_graph_period2, method = 'lhn_global', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'lhn_global'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$lhn_global), 0, period2_data$lhn_global)
+
+### Average Commute Time
+z <- proxfun(Co_IPC_graph_period2, method = 'act', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'ACT'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$ACT), 0, period2_data$ACT)
+
+### Normalized Average Commute Time
+z <- proxfun(Co_IPC_graph_period2, method = 'act_n', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'ACT_Normalized'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$ACT_Normalized), 0, period2_data$ACT_Normalized)
+
+### Random Walk with Restart
+z <- proxfun(Co_IPC_graph_period2, method = 'rwr', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'RWR'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$RWR), 0, period2_data$RWR)
+
+### Matrix Forest Index
+z <- proxfun(Co_IPC_graph_period2, method = 'mf', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'MF'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$MF), 0, period2_data$MF)
+
+### Shortest Paths
+z <- proxfun(Co_IPC_graph_period2, method = 'dist', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'dist'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$dist), 0, period2_data$dist)
+
+### Local Path Index
+z <- proxfun(Co_IPC_graph_period2, method = 'lp', value = 'edgelist')
+period2_data <- merge(period2_data, z, by = c('from', 'to'), all.x = T)
+colnames(period2_data)[length(period2_data)] <- 'LP'
+period2_data[length(period2_data)] <- ifelse(is.na(period2_data$LP), 0, period2_data$LP)
+
+period2_data <- period2_data[,3:22]
+cor(period2_data[,3:20])
+
+### min-max 정규화.
+minmax <- function(x) {
+  x = (x-min(x))/(max(x)-min(x))
+}
+
+for(i in 3:length(period2_data)){
+  period2_data[i] <- minmax(period2_data[i])
+}
+
+
+###  period 1 y값 입히기
+link_period2 <- data.frame(IPC1=c(1), IPC2=c(1), link = c(1))
+for(i in 1:length(IPC)){
+  for(j in 1:length(IPC)){
+    first_ipc = IPC[i]
+    second_ipc = IPC[j]
+    if (i == j){
+      link = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        link = 0
+      }else {
+        link = 1
+      }
+    }
+    link_period2 <- rbind(link_period2, data.frame(IPC1=first_ipc, IPC2=second_ipc, link = link))
+  }
+}
+link_period2
+period1_data <- merge(period1_data, link_period2, by = c('IPC1', 'IPC2'))
+period1_data$link <- as.factor(period1_data$link)
+
+### 기존 link 입히기.
+colnames(link_period2)[3] <- 'prior_link'
+period2_data <- merge(period2_data, link_period2, by = c('IPC1', 'IPC2'))
+period2_data$prior_link <- as.factor(period2_data$prior_link)
+
+
+
+######################################## period 3
+IPC <- c(Car, Tel)
+IPC_num <- length(IPC)
+Co_IPC_matrix_period3 <- matrix(rep(0, IPC_num*IPC_num), nrow = IPC_num)
+IPC_patent_list <- list()
+for (i in 1:length(IPC)){
+  IPC_first <- IPC[i]
+  IPC_first_patent <- period3[period3$IPC == IPC_first, ]
+  IPC_patent_list[[i]] <- unique(IPC_first_patent$ID)
+}
+
+for (i in 1:length(IPC)){
+  for (j in 1:length(IPC)){
+    if (i == j){
+      Co_IPC_matrix_period3[i,j] = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        Co_IPC_matrix_period3[i,j] = 0
+      }else {
+        Co_IPC_matrix_period3[i,j] = 1
+      }
+    }
+  }
+}
+
+row.names(Co_IPC_matrix_period3) <- IPC
+colnames(Co_IPC_matrix_period3) <- IPC
+
+
+sum(Co_IPC_matrix_period3)
+
+
+### similarity 계산.
+library(igraph)
+library(linkprediction)
+
+period3_data <- data.frame(IPC1=c(1), IPC2=c(1), from=c(1), to=c(1))
+for(i in 1:length(Car)){
+  period3_data <- rbind(period3_data, data.frame(IPC1=c(rep(Car[i],length(Tel))), IPC2=c(Tel), from=c(rep(i, length(Tel))), to=c(32:52)))
+}
+period3_data <- period3_data[-1,]
+row.names(period3_data) <- NULL
+
+Co_IPC_graph_period3 <- graph.adjacency(Co_IPC_matrix_period3, mode="undirected", weighted=NULL) 
+plot(Co_IPC_graph_period3)
+
+### Common neighbours
+z <- proxfun(Co_IPC_graph_period3, method = 'cn', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'CN'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$CN), 0, period3_data$CN)
+
+### Jaccard
+z <- proxfun(Co_IPC_graph_period3, method = 'jaccard', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'Jaccard'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$Jaccard), 0, period3_data$Jaccard)
+
+
+### Cosine
+z <- proxfun(Co_IPC_graph_period3, method = 'cos', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'Cosine'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$Cosine), 0, period3_data$Cosine)
+
+### Sorensen
+z <- proxfun(Co_IPC_graph_period3, method = 'sor', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'Sorensen'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$Sorensen), 0, period3_data$Sorensen)
+
+### Hub Promoted Index
+z <- proxfun(Co_IPC_graph_period3, method = 'hpi', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'HPI'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$HPI), 0, period3_data$HPI)
+
+### Hub Depressed Index
+z <- proxfun(Co_IPC_graph_period3, method = 'hdi', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'HDI'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$HDI), 0, period3_data$HDI)
+
+### Leicht-Holme-Newman Index (Local)
+z <- proxfun(Co_IPC_graph_period3, method = 'lhn_local', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'lhn_local'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$lhn_local), 0, period3_data$lhn_local)
+
+### Preferential Attachment
+z <- proxfun(Co_IPC_graph_period3, method = 'pa', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'PA'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$PA), 0, period3_data$PA)
+
+### Adamic–Adar Index
+z <- proxfun(Co_IPC_graph_period3, method = 'aa', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'AAI'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$AAI), 0, period3_data$AAI)
+
+### Resource Allocation Index
+z <- proxfun(Co_IPC_graph_period3, method = 'ra', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'RA'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$RA), 0, period3_data$RA)
+
+### Katz Index
+z <- proxfun(Co_IPC_graph_period3, method = 'katz', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'Katz'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$Katz), 0, period3_data$Katz)
+
+### Leicht-Holme-Newman Index (Global)
+z <- proxfun(Co_IPC_graph_period3, method = 'lhn_global', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'lhn_global'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$lhn_global), 0, period3_data$lhn_global)
+
+### Average Commute Time
+z <- proxfun(Co_IPC_graph_period3, method = 'act', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'ACT'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$ACT), 0, period3_data$ACT)
+
+### Normalized Average Commute Time
+z <- proxfun(Co_IPC_graph_period3, method = 'act_n', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'ACT_Normalized'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$ACT_Normalized), 0, period3_data$ACT_Normalized)
+
+### Random Walk with Restart
+z <- proxfun(Co_IPC_graph_period3, method = 'rwr', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'RWR'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$RWR), 0, period3_data$RWR)
+
+### Matrix Forest Index
+z <- proxfun(Co_IPC_graph_period3, method = 'mf', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'MF'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$MF), 0, period3_data$MF)
+
+### Shortest Paths
+z <- proxfun(Co_IPC_graph_period3, method = 'dist', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'dist'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$dist), 0, period3_data$dist)
+
+### Local Path Index
+z <- proxfun(Co_IPC_graph_period3, method = 'lp', value = 'edgelist')
+period3_data <- merge(period3_data, z, by = c('from', 'to'), all.x = T)
+colnames(period3_data)[length(period3_data)] <- 'LP'
+period3_data[length(period3_data)] <- ifelse(is.na(period3_data$LP), 0, period3_data$LP)
+
+period3_data <- period3_data[,3:22]
+cor(period3_data[,3:20])
+
+
+###  period 2 y값 입히기
+link_period3 <- data.frame(IPC1=c(1), IPC2=c(1), link = c(1))
+for(i in 1:length(IPC)){
+  for(j in 1:length(IPC)){
+    first_ipc = IPC[i]
+    second_ipc = IPC[j]
+    if (i == j){
+      link = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        link = 0
+      }else {
+        link = 1
+      }
+    }
+    link_period3 <- rbind(link_period3, data.frame(IPC1=first_ipc, IPC2=second_ipc, link = link))
+  }
+}
+link_period3
+period2_data <- merge(period2_data, link_period3, by = c('IPC1', 'IPC2'))
+period2_data$link <- as.factor(period2_data$link)
+
+### period 3 y값 입히기.
+link_period3 <- data.frame(IPC1=c(1), IPC2=c(1), prior_link = c(1))
+for(i in 1:length(IPC)){
+  for(j in 1:length(IPC)){
+    first_ipc = IPC[i]
+    second_ipc = IPC[j]
+    if (i == j){
+      link = 0
+    }else{
+      Co_IPC_ox <- length(intersect(IPC_patent_list[[i]], IPC_patent_list[[j]]))
+      if (Co_IPC_ox == 0){
+        link = 0
+      }else {
+        link = 1
+      }
+    }
+    link_period3 <- rbind(link_period3, data.frame(IPC1=first_ipc, IPC2=second_ipc, prior_link = link))
+  }
+}
+link_period3
+period3_data <- merge(period3_data, link_period3, by = c('IPC1', 'IPC2'))
+period3_data$prior_link <- as.factor(period3_data$prior_link)
+
+
+write.csv(period1_data, 'period1_data.csv', row.names = F)
+write.csv(period2_data, 'period2_data.csv', row.names = F)
+write.csv(period3_data, 'period3_data.csv', row.names = F)
+
+
+##############예측
+
+### 데이터 불러오기.
+period1_data <- read.csv('period1_data.csv', header = T, stringsAsFactors = F)
+period2_data <- read.csv('period2_data.csv', header = T, stringsAsFactors = F)
+period3_data <- read.csv('period3_data.csv', header = T, stringsAsFactors = F)
+
+
+### min-max 정규화.
+minmax <- function(x) {
+  x = (x-min(x))/(max(x)-min(x))
+}
+
+for(i in 3:(length(period2_data)-2)){
+  period1_data[i] <- minmax(period1_data[i])
+  period2_data[i] <- minmax(period2_data[i])
+}
+for(i in 3:(length(period3_data)-1)){
+  period3_data[i] <- minmax(period3_data[i])
+}
+
+
+summary(period3_data)
+### 머신러닝
+
+library(randomForest)
+library(caret)
+
+form <- as.formula(paste('link ~ ', paste(colnames(period1_data)[3:21], collapse = ' + ')))
+rf_model <- randomForest(formula = form, data = period1_data)
+pred_rf <- predict(rf_model, period2_data)
+library(caret)
+confusionMatrix(pred_rf, period2_data$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data$link, pred_rf)
+
+library(e1071)
+svm_model <- svm(formula = form, data = period1_data, probability = T)
+pred_rf <- predict(svm_model, period2_data,probability = T)
+attr(pred_rf, "probabilities")
+confusionMatrix(pred_rf, period2_data$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data$link, attr(pred_rf, "probabilities")[,1])
+
+library(C50)
+C50_model <- C5.0(formula = form, data = period1_data)
+pred_C50 <- predict(C50_model, period2_data, type = 'class')
+attr(pred_rf, "probabilities")
+confusionMatrix(pred_C50, period2_data$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data$link, pred_C50)
+plot(C50_model)
+
+library(gbm)
+gbm_model <- gbm(formula = form, data = period1_data, distribution = 'gaussian', n.trees = 10000, interaction.depth = 4, shrinkage = 0.01)
+pred_gbm <- predict(gbm_model, period2_data, n.trees = 10000, type = 'response')
+pred_gbm <- ifelse(pred_gbm>1.25,1,0)
+pred_gbm <- as.factor(pred_gbm)
+confusionMatrix(pred_gbm, period2_data$link)
+new_link_period1and2 <- data.frame(period1_data$link, period2_data$link, pred_gbm)
+
+
+summary(period1_data)
