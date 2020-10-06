@@ -1,0 +1,17 @@
+### STM
+library(stm)
+library(quanteda)
+
+processed6 <- textProcessor(only_gender$Abstract, metadata = only_gender, removenumbers = F, removepunctuation = F,  stem = F, wordLengths = c(2,Inf), customstopwords = custom_stopword)
+out6 <- prepDocuments(processed6$documents, processed6$vocab,
+                      processed6$meta, lower.thresh = 10)
+levels(out6$meta$Year)
+levels(out6$meta$gender)
+
+### topic 할당.
+topic_dt <- make.dt(only_gender_stm43_11, meta = out6$meta)
+topic_dt$Topic = 0
+for(i in 1:length(topic_dt$Topic1)){
+  index <- which(topic_dt[i,] == max(topic_dt[i,2:12]))
+  topic_dt$Topic[i] = index-1
+}
