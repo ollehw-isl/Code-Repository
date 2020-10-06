@@ -1,0 +1,69 @@
+german <- read.csv('German_credit.csv')
+colnames(german)
+
+# 범주형 변수 설정
+german$Checking_account <- as.factor(german$Checking_account)
+german$Credit_history <- as.factor(german$Credit_history)
+german$Purpose <- as.factor(german$Purpose)
+german$Saving_accout <- as.factor(german$Saving_accout)
+german$Present_employment <- as.factor(german$Present_employment)
+german$Personal_status___sex <- as.factor(german$Personal_status___sex)
+german$Other_debtors_guarantors <- as.factor(german$Other_debtors_guarantors)
+german$Property <- as.factor(german$Property)
+german$Other_installment_plan <- as.factor(german$Other_installment_plan)
+german$Housing <- as.factor(german$Housing)
+german$Job <- as.factor(german$Job)
+german$Telephone <- as.factor(german$Telephone)
+german$Foreign_worker <- as.factor(german$Foreign_worker)
+german$Credit_status <- as.factor(german$Credit_status)
+
+summary(german)
+
+### 층화 추출
+library(sampling)
+stratified_sampling <- strata(german, stratanames = c("Credit_status"), size =c(300,300),
+                              method="srswor")
+
+st_data <- getdata(german, stratified_sampling)
+table(st_data$Credit_status)
+rm(stratified_sampling)
+
+# scaling
+st_data$Duration_in_month = (st_data$Duration_in_month - min(st_data$Duration_in_month))/(max(st_data$Duration_in_month)-min(st_data$Duration_in_month))
+st_data$Credit_amount = (st_data$Credit_amount - min(st_data$Credit_amount))/(max(st_data$Credit_amount)-min(st_data$Credit_amount))
+st_data$Installment_rate = (st_data$Installment_rate - min(st_data$Installment_rate))/(max(st_data$Installment_rate)-min(st_data$Installment_rate))
+st_data$Present_residence = (st_data$Present_residence - min(st_data$Present_residence))/(max(st_data$Present_residence)-min(st_data$Present_residence))
+st_data$Age = (st_data$Age - min(st_data$Age))/(max(st_data$Age)-min(st_data$Age))
+st_data$Num_of_people_liable = (st_data$Num_of_people_liable - min(st_data$Num_of_people_liable))/(max(st_data$Num_of_people_liable)-min(st_data$Num_of_people_liable))
+st_data$Num_of_existing_credits = (st_data$Num_of_existing_credits - min(st_data$Num_of_existing_credits))/(max(st_data$Num_of_existing_credits)-min(st_data$Num_of_existing_credits))
+
+summary(st_data)
+
+# Data partition
+library(caret)
+train <- createDataPartition(st_data$ID, p=0.7, list=FALSE)
+td <- st_data[train,]
+vd <- st_data[-train,]
+rm(st_data, train)
+
+colnames(td)
+td <- td[, -c(1,23,24,25)]
+vd <- vd[, -c(1,23,24,25)]
+
+## Fit neural network
+
+# install library
+install.packages("neuralnet")
+
+# load library
+library(neuralnet)
+
+set.seed(2)
+
+td_x = model.matrix(Credit_status ~ ., td)
+Credit_status = ifelse(td$Credit_status == 'N', 0, 1)
+td1 = data.frame(cbind(td_x, Credit_status))
+td1 = td1[,-1]
+NN = neuralnet(Credit_status ~ . ,td1, hidden = c(3,3,3,3,3), linear.output = F, err.fct = 'ce', likelihood = T)
+
+
