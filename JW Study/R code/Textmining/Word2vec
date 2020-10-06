@@ -1,0 +1,34 @@
+### Data : http://mattmahoney.net/dc/text8.zip
+
+install.packages("devtools")
+devtools::install_github("bmschmidt/wordVectors")
+
+#Window의 경우 Rtools 설치 필요!
+
+library(wordVectors)
+library(stringr)
+
+model = train_word2vec(train_file = "text8"
+, threads=3 #cpu 개수
+, vectors=30 #차원의 수
+, force = F
+, window = 4 #앞뒤에 볼 단어 수
+, output_file = "word2vec_model1.bin"
+)
+
+model@.Data
+model@.Data['king',]
+
+### word2vec 전처리
+
+# 한글자 단어 삭제하기
+model = model[nchar(rownames(model))>1,]
+
+# 불용어 삭제하기
+model = model[!(rownames(model) %in% stop_words$word),]
+model
+
+model@.Data
+
+### 가장 가까운 단어 탐색
+nearest_to(model, model[["prince"]], 10)
