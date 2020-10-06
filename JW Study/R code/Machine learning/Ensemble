@@ -1,0 +1,156 @@
+german <- read.csv('German_credit.csv')
+colnames(german)
+
+# 범주형 변수 설정
+german$Checking_account <- as.factor(german$Checking_account)
+german$Credit_history <- as.factor(german$Credit_history)
+german$Purpose <- as.factor(german$Purpose)
+german$Saving_accout <- as.factor(german$Saving_accout)
+german$Present_employment <- as.factor(german$Present_employment)
+german$Personal_status___sex <- as.factor(german$Personal_status___sex)
+german$Other_debtors_guarantors <- as.factor(german$Other_debtors_guarantors)
+german$Property <- as.factor(german$Property)
+german$Other_installment_plan <- as.factor(german$Other_installment_plan)
+german$Housing <- as.factor(german$Housing)
+german$Job <- as.factor(german$Job)
+german$Telephone <- as.factor(german$Telephone)
+german$Foreign_worker <- as.factor(german$Foreign_worker)
+german$Credit_status <- as.factor(german$Credit_status)
+
+
+summary(german)
+
+
+# 층화추출
+
+library(sampling)
+stratified_sampling <- strata(german, stratanames = c("Credit_status"), size =c(300,300),
+method="srswor")
+
+st_data <- getdata(german, stratified_sampling)
+table(st_data$Credit_status)
+rm(stratified_sampling)
+
+
+# scaling
+st_data$Duration_in_month = (st_data$Duration_in_month - min(st_data$Duration_in_month))/(max(st_data$Duration_in_month)-min(st_data$Duration_in_month))
+st_data$Credit_amount = (st_data$Credit_amount - min(st_data$Credit_amount))/(max(st_data$Credit_amount)-min(st_data$Credit_amount))
+st_data$Installment_rate = (st_data$Installment_rate - min(st_data$Installment_rate))/(max(st_data$Installment_rate)-min(st_data$Installment_rate))
+st_data$Present_residence = (st_data$Present_residence - min(st_data$Present_residence))/(max(st_data$Present_residence)-min(st_data$Present_residence))
+st_data$Age = (st_data$Age - min(st_data$Age))/(max(st_data$Age)-min(st_data$Age))
+st_data$Num_of_people_liable = (st_data$Num_of_people_liable - min(st_data$Num_of_people_liable))/(max(st_data$Num_of_people_liable)-min(st_data$Num_of_people_liable))
+st_data$Num_of_existing_credits = (st_data$Num_of_existing_credits - min(st_data$Num_of_existing_credits))/(max(st_data$Num_of_existing_credits)-min(st_data$Num_of_existing_credits))
+
+summary(st_data)
+
+
+# Data partition
+library(caret)
+train <- createDataPartition(st_data$ID, p=0.7, list=FALSE)
+td <- st_data[train,]
+vd <- st_data[-train,]
+rm(st_data, train)
+
+colnames(td)
+td <- td[, -c(1,23,24,25)]
+vd <- vd[, -c(1,23,24,25)]
+
+
+######## Bagging
+install.packages("ipred")
+library(ipred)
+set.seed(300)
+
+## nbag : number of bag
+bag_model <- bagging(Credit_status ~ . , data = td, nbagg = 10)
+bag_pred <- predict(bag_model, vd)
+confusionMatrix(bag_pred, vd$Credit_status)
+
+## 최적의 nbag 찾기.
+vd_acc = c()
+for (i in 1:50){
+bag_model <- bagging(Credit_status ~ . , data = td, nbagg = i)
+bag_pred <- predict(bag_model, vd)
+vd_acc = c(vd_acc, confusionMatrix(bag_pred, vd$Credit_status)$overall[[1]])
+}
+plot(1:50, vd_acc, type = 'l')
+which(vd_acc == max(vd_acc))
+
+######## Adaboost
+install.packages('adabag')
+library(adabag)
+
+# 'boos' is a bootstrap uses the weights for each observation in an iteration
+# 'mfinal' is the number of iterations or trees to use.
+ada_model = boosting(Credit_status ~ . , data = td,boos=TRUE, mfinal=10)
+
+# Trees
+ada_model$trees
+
+# variable importance
+ada_model$importance
+
+# validation
+ada_pred = predict(ada_model, vd)
+confusionMatrix(factor(ada_pred$class), vd$Credit_status)
+
+# 최적의 mfinal 찾기
+## 최적의 nbag 찾기.
+vd_acc = c()
+for (i in seq(10,20, by = 2)){
+ada_model <- boosting(Credit_status ~ . , data = td,boos=TRUE, mfinal = i)
+ada_pred <- predict(ada_model, vd)
+vd_acc = c(vd_acc, confusionMatrix(factor(ada_pred$class), vd$Credit_status)$overall[[1]])
+}
+plot(seq(10,20, by = 2), vd_acc, type = 'l')
+which(vd_acc == max(vd_acc))
+
+# cross-validation
+cv_ada_model = boosting.cv(Credit_status ~ . , data = td,boos=TRUE, mfinal = 10, v=5)
+
+ 
+
+######### Gradient boost
+install.packages('gbm')
+library(gbm)
+
+td$Credit_status = ifelse(td$Credit_status == 'Y', 1, 0)
+vd$Credit_status = ifelse(vd$Credit_status == 'Y', 1, 0)
+
+
+## https://cran.r-project.org/web/packages/gbm/gbm.pdf
+
+
+gbm_model = gbm(Credit_status ~ . , data = td,
+distribution = "bernoulli", cv.folds = 10,
+shrinkage = .01, n.minobsinnode = 10, n.trees = 100)
+
+# train error
+plot(1:2000, gbm_model$train.error, type = 'l')
+
+# validation
+gbm_pred = predict(gbm_model, vd)
+gbm_pred = ifelse(gbm_pred >0 ,1, 0)
+confusionMatrix(factor(gbm_pred), factor(vd$Credit_status))
+
+#############XGBoost######################
+install.packages('xgboost')
+library(xgboost)
+
+## https://cran.r-project.org/web/packages/xgboost/xgboost.pdf
+
+xgb_model = xgboost(data = data.matrix(td[,1:20]), label = td$Credit_status,
+max.depth=3, nrounds = 100, eta = 0.1, objective = 'binary:logistic')
+
+# train_error
+plot(xgb_model$evaluation_log, type = 'l')
+
+# importance
+imp = xgb.importance(model = xgb_model)
+
+# validation
+xgb_pred = predict(xgb_model, data.matrix(vd[,1:20]))
+xgb_pred = ifelse(xgb_pred >0.5 ,1, 0)
+confusionMatrix(factor(xgb_pred), factor(vd$Credit_status))
+
+ 
