@@ -1,0 +1,493 @@
+library(dplyr)
+
+## 청구항 수
+Patent_df = publn[,c(1,9,10, 8)]
+
+## family
+Patent_df = merge(Patent_df, family[,c(1,4)], all.x = T)
+rm(family)
+
+## ipc
+ipc_num_df = ipc %>% group_by(ID) %>% summarise(IPC = sum(index))
+Patent_df = merge(Patent_df, ipc_num_df, all.x = T)
+rm(ipc, ipc_num_df)
+
+## backward
+backward = rbind(man_backward, woman_backward, mixed_backward)
+Patent_df = merge(Patent_df, backward, all.x=T)
+Patent_df = Patent_df[,-c(7,8)]
+colnames(Patent_df)[7] = 'Backward'
+
+## inventor
+Inventor_USPTO <- read.csv('Inventor_USPTO.csv', header = T, stringsAsFactors = F)
+colnames(Inventor_USPTO)[1] <- 'ID'
+Inventor_USPTO$index <- 1
+Inventor_USPTO_patent_per_number <- Inventor_USPTO %>%
+  group_by(ID) %>%
+  summarise(invent_num = sum(index))
+Patent_df = merge(Patent_df,Inventor_USPTO_patent_per_number, all.x = T)
+rm(Inventor_USPTO, Inventor_USPTO_patent_per_number)
+
+## topic
+topic_dt
+length(intersect(topic_dt$ID, Patent_df$ID))
+topic_dt$ID = as.integer(topic_dt$ID)
+topic_dt1 = merge(topic_dt, family[,c(1,3)], all.x = T)
+family_topic = merge(family, topic_dt1[,c(6,5)], by = 'Family_ID')
+length(intersect(family_topic$ID, Patent_df$ID))
+Patent_df = merge(Patent_df, family_topic[,c(2,5)], all.x = T)
+## Abstract가 정보가 없던 869개의 문서는 제거
+Patent_df_no_topic = Patent_df[is.na(Patent_df$Topic),]
+Patent_df_no_topic = merge(Patent_df_no_topic, abstract[,c(1,3)], all.x = T)
+Patent_df_no_topic = merge(Patent_df_no_topic, ipc[,1:2])
+Patent_df_no_topic_AQ = Patent_df_no_topic[grep('A61Q', Patent_df_no_topic$IPC6),]
+Patent_df_no_topic_topic9 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q   5'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic9),]
+Patent_df_no_topic_topic6 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q  19'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic6),]
+Patent_df_no_topic_topic7 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q  11'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic7),]
+Patent_df_no_topic_topic1 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q  13'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic1),]
+Patent_df_no_topic_topic3 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q   1'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic3),]
+Patent_df_no_topic_topic4 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q  17'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic4),]
+Patent_df_no_topic_topic2 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q   3'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic2),]
+Patent_df_no_topic_topic9_1 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q   7'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic9_1),]
+Patent_df_no_topic_topic10 = unique(Patent_df_no_topic_AQ$ID[Patent_df_no_topic_AQ$IPC6 == 'A61Q  15'])
+Patent_df_no_topic_AQ = Patent_df_no_topic_AQ[!(Patent_df_no_topic_AQ$ID %in% Patent_df_no_topic_topic10),]
+Patent_df_no_topic_topic9_2 = Patent_df_no_topic_AQ$ID
+Patent_df_no_topic_topic9 = c(Patent_df_no_topic_topic9, Patent_df_no_topic_topic9_1, Patent_df_no_topic_topic9_2)
+
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic9] = 9
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic1] = 1
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic2] = 2
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic3] = 3
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic4] = 4
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic7] = 5
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic6] = 6
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic10] = 10
+Patent_df$Topic[Patent_df$ID %in% Patent_df_no_topic_topic9] = 9
+Patent_df$Topic[is.na(Patent_df$Topic)] = 11
+rm(Patent_df_no_topic, Patent_df_no_topic_AQ, Patent_df_no_topic_topic1,
+   Patent_df_no_topic_topic1,Patent_df_no_topic_topic10,Patent_df_no_topic_topic2,
+   Patent_df_no_topic_topic3,Patent_df_no_topic_topic4,Patent_df_no_topic_topic6,
+   Patent_df_no_topic_topic7,Patent_df_no_topic_topic9,Patent_df_no_topic_topic9_1,
+   Patent_df_no_topic_topic9_2, processed6, Woman, woman_abstract, woman_backward, woman_ipc,
+   woman_publn, Woman_ID, man_abstract, man_backward, man_ipc, man_publn, Man_ID, Man, mixed_abstract,
+   mixed_backward, mixed_ipc, mixed_publn, Mixed, Mixed_ID)
+
+### sector
+sector <- read.csv('sector1.csv', header = T)
+colnames(sector)[1] <- 'ID'
+sector <- sector[sector$ID %in% Patent_df$ID,]
+summary(sector$Sector)
+sector$Sector <- as.character(sector$Sector)
+sector$Sector[grep('NON',sector$Sector)] <- 'NON-PROFIT'
+sector$Sector <- factor(sector$Sector)
+summary(sector$Sector)
+sector$index = 1
+
+Patent_df = Patent_df[,1:9]
+
+company <- sector[sector$Sector == 'COMPANY',]
+company <- company %>% 
+  group_by(ID) %>%
+  summarise(company = sum(index))
+Patent_df <- merge(Patent_df, company, by = 'ID', all.x = T)
+Patent_df$company <- ifelse(is.na(Patent_df$company), 0, 1)
+
+hospital <- sector[sector$Sector == 'HOSPITAL',]
+hospital <- hospital %>% 
+  group_by(ID) %>%
+  summarise(hospital = sum(index))
+Patent_df <- merge(Patent_df, hospital, by = 'ID', all.x = T)
+Patent_df$hospital <- ifelse(is.na(Patent_df$hospital), 0, 1)
+
+INDIVIDUAL <- sector[sector$Sector == 'INDIVIDUAL',]
+INDIVIDUAL <- INDIVIDUAL %>% 
+  group_by(ID) %>%
+  summarise(INDIVIDUAL = sum(index))
+Patent_df <- merge(Patent_df, INDIVIDUAL, by = 'ID', all.x = T)
+Patent_df$INDIVIDUAL <- ifelse(is.na(Patent_df$INDIVIDUAL), 0, 1)
+
+NONPROFIT <- sector[sector$Sector == 'NON-PROFIT',]
+NONPROFIT <- NONPROFIT %>% 
+  group_by(ID) %>%
+  summarise(NONPROFIT = sum(index))
+Patent_df <- merge(Patent_df, NONPROFIT, by = 'ID', all.x = T)
+Patent_df$NONPROFIT <- ifelse(is.na(Patent_df$NONPROFIT), 0, 1)
+
+UNIVERSITY <- sector[sector$Sector == 'UNIVERSITY',]
+UNIVERSITY <- UNIVERSITY %>% 
+  group_by(ID) %>%
+  summarise(UNIVERSITY = sum(index))
+Patent_df <- merge(Patent_df, UNIVERSITY, by = 'ID', all.x = T)
+Patent_df$UNIVERSITY <- ifelse(is.na(Patent_df$UNIVERSITY), 0, 1)
+
+UNKNOWN <- sector[sector$Sector == 'UNKNOWN',]
+UNKNOWN <- UNKNOWN %>% 
+  group_by(ID) %>%
+  summarise(UNKNOWN = sum(index))
+Patent_df <- merge(Patent_df, UNKNOWN, by = 'ID', all.x = T)
+Patent_df$UNKNOWN <- ifelse(is.na(Patent_df$UNKNOWN), 0, 1)
+
+Patent_df$company <- factor(Patent_df$company)
+Patent_df$hospital <- factor(Patent_df$hospital)
+Patent_df$INDIVIDUAL <- factor(Patent_df$INDIVIDUAL)
+Patent_df$UNKNOWN <- factor(Patent_df$UNKNOWN)
+Patent_df$NONPROFIT <- factor(Patent_df$NONPROFIT)
+Patent_df$UNIVERSITY <- factor(Patent_df$UNIVERSITY)
+
+rm(company, sector, UNKNOWN, UNIVERSITY, NONPROFIT, INDIVIDUAL, hospital)
+
+Patent_df_no_aff = Patent_df[Patent_df$company == 0 & Patent_df$hospital == 0 & Patent_df$INDIVIDUAL == 0 & Patent_df$NONPROFIT == 0 & Patent_df$UNIVERSITY == 0 & Patent_df$UNKNOWN == 0,]
+Patent_df_no_aff = Patent_df_no_aff$ID
+Patent_df$INDIVIDUAL[Patent_df$ID %in% Patent_df_no_aff] = 1
+
+
+## Grant_leg
+Patent_df = merge(Patent_df, publn_first[,c(1,12)])
+colnames(Patent_df)[16] = 'Grant_leg'
+
+## Patent age
+Patent_df$Age = 2017 - Patent_df$Year
+
+## forward citation
+forward <- read.csv('forward_count.csv', header = T)
+Patent_df = merge(Patent_df, forward, all.x = T)
+Patent_df$citation <- ifelse(is.na(Patent_df$citation), 0, Patent_df$citation)
+
+
+
+##################
+
+# forward citation graph
+Patent_df_under_100 = Patent_df[Patent_df$citation < 100,]
+Patent_df_under_100$index = 1
+Patent_df_under_100 = Patent_df_under_100 %>%
+  group_by(gender, citation) %>%
+  summarise(Patent = sum(index))
+citation_trend = data.frame(gender = rep(c('Male', 'Female', 'Mixed'), each = 100), citation = rep(0:99,3))
+citation_trend = merge(citation_trend, Patent_df_under_100, all.x = T)
+citation_trend$Patent = ifelse(is.na(citation_trend$Patent), 0, citation_trend$Patent)
+citation_trend$Proportion = 0
+citation_trend$Proportion[citation_trend$gender == 'Male'] = citation_trend$Patent[citation_trend$gender == 'Male']/length(Patent_df$ID[Patent_df$gender == 'Male'])
+citation_trend$Proportion[citation_trend$gender == 'Female'] = citation_trend$Patent[citation_trend$gender == 'Female']/length(Patent_df$ID[Patent_df$gender == 'Female'])
+citation_trend$Proportion[citation_trend$gender == 'Mixed'] = citation_trend$Patent[citation_trend$gender == 'Mixed']/length(Patent_df$ID[Patent_df$gender == 'Mixed'])
+
+write.csv(citation_trend, 'citation_trend.csv', row.names = F)
+
+
+# Zero inflated poisson regression
+Patent_df$Topic = factor(Patent_df$Topic)
+colnames(Patent_df)
+library('pscl')
+m1 <- zeroinfl(citation ~ gender + claim + Grant_leg + 
+                 Family + IPC + Backward + invent_num + Topic +
+                 + company + hospital + INDIVIDUAL + UNIVERSITY + UNKNOWN + NONPROFIT, 
+               offset = log(Age), data = Patent_df,
+               dist = 'poisson')
+
+
+summary(m1)
+expCoef <- exp(coef((m1)))
+expCoef <- matrix(expCoef, ncol = 2)
+rownames(expCoef) <- c('Intercept', 'Family', 'genderMale', 'backward', 'invent_num', 'grant1', 
+                       'ipc_range', 'topic2', 'topic3', 'topic4', 'topic5', 'topic6', 'topic7',
+                       'topic8', 'topic9', 'topic10', 'company1', 'hospital1', 'individual',
+                       'nonprofit1', 'university1', 'unknown1')
+colnames(expCoef) <- c("Count_model","Zero_inflation_model")
+expCoef
+### MSE
+sum(m1$residuals^2)/length(m1$residuals)
+1-sum(m1$residuals^2)/sum((m1$model$citation - mean(m1$model$citation))^2)
+
+Patent_df1 = Patent_df[Patent_df$citation < 50,]
+m1 <- zeroinfl(citation ~ gender + claim + Grant_leg + 
+                 Family + IPC + Backward + invent_num + Topic +
+                 + company + hospital + INDIVIDUAL + UNIVERSITY + UNKNOWN + NONPROFIT, 
+               offset = log(Age), data = Patent_df1,
+               dist = 'poisson')
+
+### one-hot
+Patent_df_one_hot = Patent_df
+Patent_df_one_hot$Male = 0
+Patent_df_one_hot$Mixed = 0
+Patent_df_one_hot$Male = ifelse(Patent_df_one_hot$gender == 'Male', 1, 0)
+Patent_df_one_hot$Mixed = ifelse(Patent_df_one_hot$gender == 'Mixed', 1, 0)
+Patent_df_one_hot$Male = factor(Patent_df_one_hot$Male)
+Patent_df_one_hot$Mixed = factor(Patent_df_one_hot$Mixed)
+
+
+Patent_df_one_hot$Topic2 = 0
+Patent_df_one_hot$Topic3 = 0
+Patent_df_one_hot$Topic4 = 0
+Patent_df_one_hot$Topic5 = 0
+Patent_df_one_hot$Topic6 = 0
+Patent_df_one_hot$Topic7 = 0
+Patent_df_one_hot$Topic8 = 0
+Patent_df_one_hot$Topic9 = 0
+Patent_df_one_hot$Topic10 = 0
+Patent_df_one_hot$Topic11 = 0
+
+Patent_df_one_hot$Topic2 = ifelse(Patent_df_one_hot$Topic == 2, 1, 0)
+Patent_df_one_hot$Topic2 = factor(Patent_df_one_hot$Topic2)
+Patent_df_one_hot$Topic3 = ifelse(Patent_df_one_hot$Topic == 3, 1, 0)
+Patent_df_one_hot$Topic3 = factor(Patent_df_one_hot$Topic3)
+Patent_df_one_hot$Topic4 = ifelse(Patent_df_one_hot$Topic == 4, 1, 0)
+Patent_df_one_hot$Topic4 = factor(Patent_df_one_hot$Topic4)
+Patent_df_one_hot$Topic5 = ifelse(Patent_df_one_hot$Topic == 5, 1, 0)
+Patent_df_one_hot$Topic5 = factor(Patent_df_one_hot$Topic5)
+Patent_df_one_hot$Topic6 = ifelse(Patent_df_one_hot$Topic == 6, 1, 0)
+Patent_df_one_hot$Topic6 = factor(Patent_df_one_hot$Topic6)
+Patent_df_one_hot$Topic7 = ifelse(Patent_df_one_hot$Topic == 7, 1, 0)
+Patent_df_one_hot$Topic7 = factor(Patent_df_one_hot$Topic7)
+Patent_df_one_hot$Topic8 = ifelse(Patent_df_one_hot$Topic == 8, 1, 0)
+Patent_df_one_hot$Topic8 = factor(Patent_df_one_hot$Topic8)
+Patent_df_one_hot$Topic9 = ifelse(Patent_df_one_hot$Topic == 9, 1, 0)
+Patent_df_one_hot$Topic9 = factor(Patent_df_one_hot$Topic9)
+Patent_df_one_hot$Topic10 = ifelse(Patent_df_one_hot$Topic == 10, 1, 0)
+Patent_df_one_hot$Topic10 = factor(Patent_df_one_hot$Topic10)
+Patent_df_one_hot$Topic11 = ifelse(Patent_df_one_hot$Topic == 11, 1, 0)
+Patent_df_one_hot$Topic11 = factor(Patent_df_one_hot$Topic11)
+
+summary(Patent_df_one_hot)
+
+### zeroinfl
+formula = as.formula(paste('citation ~ ', paste(colnames(Patent_df_one_hot[c(19:20,4:8,10:16,21:30)]), collapse = ' + ')))
+m1 <- zeroinfl(formula = formula, 
+               offset = log(Age), data = Patent_df_one_hot,
+               dist = 'poisson')
+
+summary(m1)
+expCoef <- exp(coef((m1)))
+expCoef <- matrix(expCoef, ncol = 2)
+expCoef
+### MSE
+sum(m1$residuals^2)/length(m1$residuals)
+1-sum(m1$residuals^2)/sum((m1$model$citation - mean(m1$model$citation))^2)
+
+Patent_df_one_hot1 = Patent_df_one_hot[Patent_df_one_hot$citation < 101,]
+m2 <- zeroinfl(formula = formula, 
+               offset = log(Age), data = Patent_df_one_hot1,
+               dist = 'poisson')
+
+summary(m2)
+m2 <- zeroinfl(citation ~ Male + Mixed + claim + Family + IPC + Backward + invent_num + 
+                 company + INDIVIDUAL + NONPROFIT + UNIVERSITY + 
+                 UNKNOWN + Grant_leg + Topic2 + Topic3 + Topic4 + Topic5 + 
+                 Topic6 + Topic7 + Topic8 + Topic9 + Topic10 + Topic11 |
+                 Male + claim + IPC + 
+                 company + INDIVIDUAL + NONPROFIT + UNIVERSITY + 
+                 UNKNOWN + Grant_leg + Topic2 + Topic3 + Topic4 + Topic5 + 
+                 Topic7 + Topic9 + Topic10 + Topic11  , 
+               offset = log(Age), data = Patent_df_one_hot1,
+               dist = 'poisson')
+
+expCoef <- exp(coef((m2)))
+expCoef <- matrix(expCoef, ncol = 2)
+expCoef
+
+### MSE
+sum(m2$residuals^2)/length(m2$residuals)
+1-sum(m2$residuals^2)/sum((m2$model$citation - mean(m2$model$citation))^2)
+
+
+##################################################################
+## survival analysis
+### life cycle
+library(openxlsx)
+library(dplyr)
+life <- read.xlsx('expire.xlsx')
+life$index = 1
+life$lecg_descr[life$lecg_descr == 'Undefined'] <- 'Lapse (non payment of fees)'
+life <- life %>%
+  group_by(ID, event_publn_date, lecg_descr) %>%
+  summarise(index = mean(index))
+
+life$lecg_descr <- factor(life$lecg_descr)
+summary(life$lecg_descr)
+
+life <- life[life$ID %in% c(Man_ID, Woman_ID, Mixed_ID), ]
+
+life$lecg_descr <- factor(life$lecg_descr)
+summary(life$lecg_descr)
+
+life <- life %>%
+  group_by(ID, lecg_descr) %>%
+  summarise(event_publn_date = max(event_publn_date))
+
+life$event_publn_date <- as.Date(life$event_publn_date, origin = '1899-12-30')
+life <- merge(life, publn[c(1,3)], by = 'ID')
+life_publn <- merge(life, publn[c(1,3)], by = 'ID')
+life$event_publn_date[life$lecg_descr == 'Reinstatement / Restoration'] = life$event_publn_date[life$lecg_descr == 'Reinstatement / Restoration'] + 1 
+
+##
+
+life <- life[order(life$event_publn_date), ]
+row.names(life) <- NULL
+life$index <- 1:length(life$ID)
+life1 <- life %>%
+  group_by(ID, appln_date) %>%
+  summarise(index = max(index))
+
+life <- merge(life1, life, by = c('ID', 'appln_date', 'index'))
+summary(life$lecg_descr)
+life$life <- as.integer(difftime(life$event_publn_date, life$appln_date, units = 'day'))
+life$lecg_descr <- factor(life$lecg_descr)
+
+lapse = life[life$lecg_descr == 'Lapse (non payment of fees)',] 
+Extension = life[life$lecg_descr == 'Term Extension of Rights (e.g. SPCs)',] 
+Withdrawal = life[life$lecg_descr == 'Withdrawal, Refusal, etc.',] 
+
+### dataframe 생성.
+gender_life = Patent_df_one_hot
+gender_life = merge(gender_life, publn[,c(1,3)])
+gender_life$life = NA
+gender_life$survival = 0
+
+# lapse and withdrawal
+gender_life_lapse = gender_life[gender_life$ID %in% c(lapse$ID, Withdrawal$ID),]
+gender_life_lapse = merge(gender_life_lapse, rbind(lapse[,c(1,6)], Withdrawal[,c(1,6)]))
+
+# extension
+gender_life_extension = gender_life[gender_life$ID %in% Extension$ID,]
+gender_life_extension$life = as.integer(difftime(as.Date('2018-01-01'), gender_life_extension$appln_date, units = 'day'))
+gender_life_extension$life = ifelse(gender_life_extension$life>9490, 9490, gender_life_extension$life)
+gender_life_extension$survival[gender_life_extension$life<9490] = 1
+
+# no
+gender_life_no_legal = gender_life[!(gender_life$ID %in% c(lapse$ID, Withdrawal$ID, Extension$ID)),]
+gender_life_no_legal$life = as.integer(difftime(as.Date('2018-01-01'), gender_life_no_legal$appln_date, units = 'day'))
+gender_life_no_legal$life = ifelse(gender_life_no_legal$life>7300, 7300, gender_life_no_legal$life)
+gender_life_no_legal$survival[gender_life_no_legal$life<7300] = 1
+
+gender_life = rbind(gender_life_lapse, gender_life_extension, gender_life_no_legal)
+gender_life$survival = -gender_life$survival+1
+
+### life regression
+
+library(survival)
+library(SurvRegCensCov)
+library(survminer)
+library(eha)
+
+# KM Curve
+fit = survfit(Surv(life, survival)~gender, gender_life)
+
+### KM Curve
+plot(fit,main="KM Curve", xlab="Time(days)", ylab=expression(paste(hat(S),"(t)")), col=c("red", "blue", "green"))
+plot(fit,main="KM Curve", xlim = c(0,6300),xlab="Time(days)",lwd = c(3,3,3), ylab='Survival Rate', col=c("red", "blue", "green"))
+legend("bottomright", legend=c("Male", "Female", "Mixed"),lty = c(1,1,1),lwd = c(3,3,3), col=c("blue", "red", "green"))
+
+table(gender_life$survival)
+
+
+# cox
+str(gender_life)
+colnames(gender_life)
+survival_gender <- coxph(Surv(life + survival) ~ claim + Family + IPC + 
+                           Backward + invent_num + company + hospital + 
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN + Grant_leg + citation + Male + Mixed + Topic2 + 
+                           Topic3 + Topic4 + Topic5+ Topic6 + Topic7 + Topic8 + Topic9 + Topic10 + Topic11,
+                         data = gender_life)
+
+summary(survival_gender)
+
+survival_gender1 <- coxph(Surv(life + survival) ~ claim + 
+                           Backward + invent_num + company + hospital + 
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN + Grant_leg + citation + Male +  
+                           Topic3 + Topic5+ Topic6 + Topic7 + Topic8 + Topic10 + Topic11,
+                         data = gender_life)
+
+summary(survival_gender1)
+
+survival_gender
+
+
+cox.zph(survival_gender1)
+
+
+
+formula_survival
+
+
+
+
+### KM Curve
+plot(fit,main="KM Curve", xlab="Time(days)", ylab=expression(paste(hat(S),"(t)")), col=c("red", "blue"))
+plot(fit,main="KM Curve", xlab="Time(days)", ylab='Survival Rate', col=c("red", "blue"))
+legend("topright", legend=c("Male", "Female"),lty = c(1,1), col=c("blue", "red"), bg="gray")
+
+
+### 성별의 역할.
+survival_gender_only <- survfit(Surv(life + survival) ~ gender,
+                                data = gender_life)
+
+ggsurvplot(survival_gender_only, data = gender_life, pval = TRUE)
+
+
+
+### CoxPH 적합
+
+
+survival_gender <- coxph(Surv(life + survival) ~ claim + Family + gender + backward + 
+                           invent_num + ipc_range + topic + company +
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                         data = gender_life)
+survival_gender
+
+survival_gender <- coxph(Surv(life + survival) ~ claim + gender + backward + 
+                           invent_num + topic + company +
+                           INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                         data = gender_life)
+
+summary(survival_gender)
+survival_gender
+
+
+cox.zph(survival_gender)
+
+
+survival_gender$coefficients
+survival_gender
+summary(survival_gender)
+
+
+survival_gender$residuals
+survival_gender$residuals
+sum(survival_gender$residuals^2)/length(survival_gender$residuals)
+1-sum(survival_gender$residuals^2)/sum((gender_life$life - mean(gender_life$life))^2)
+
+
+ggsurvplot(survfit(survival_gender), color = "#2E9FDF",
+           ggtheme = theme_minimal(), data = gender_life)
+ggforest(survival_gender, data = gender_life)
+cox.zph(survival_gender)
+
+survival_gender$residuals
+### Weibul Regression
+survival_gender_weibull <- weibreg(Surv(life + survival) ~ claim + Family + gender + backward + 
+                                     invent_num + ipc_range,
+                                   data = gender_life)
+
+
+survival_gender_phreg <- phreg(Surv(life + survival) ~  claim + Family + gender + backward + 
+                                 invent_num + ipc_range + topic + company +
+                                 INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN, dist = 'weibull', data = gender_life)
+
+
+survival_gender_coxreg <- coxreg(Surv(life + survival) ~  claim + Family + gender + backward + 
+                                   invent_num + ipc_range + topic + company +
+                                   INDIVIDUAL + NONPROFIT + UNIVERSITY + UNKNOWN,
+                                 data = gender_life)
+check.dist(survival_gender_coxreg, survival_gender_phreg)
+
+
+str(gender_life)
+
+
