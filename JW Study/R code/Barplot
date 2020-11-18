@@ -1,0 +1,97 @@
+### Data definition (one group)
+df <- data.frame(Name = c("JW", "HJ", "SY"),
+                 Weight = c(57, 80, 42))
+head(df)
+
+
+library(ggplot2)
+# Basic barplot
+p<-ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity")
+p
+
+# Horizontal bar plot
+p + coord_flip()
+
+# Change the width of bars
+ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity", width=0.5)
+# Change colors
+ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity", width=0.5, color="blue", fill="white")
+# Minimal theme + blue fill color
+p<-ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity", width=0.5, fill="steelblue")+
+  theme_minimal()
+
+
+# x order change
+p + scale_x_discrete(limits=c("JW", "HJ", "SY"))
+
+
+### Labeling
+# Outside bars
+ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Weight), vjust=-0.8, size=5)+
+  theme_minimal()
+# Inside bars
+ggplot(data=df, aes(x=Name, y=Weight)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Weight), vjust=1.6, color="white", size=8)+
+  theme_minimal()
+
+
+# Change barplot fill colors by groups
+p<-ggplot(df, aes(x=Name, y=Weight, fill=Name)) +
+  geom_bar(stat="identity", width=0.5)+theme_minimal()
+p
+
+
+# Use custom color palettes
+p+scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+# use brewer color palettes
+p+scale_fill_brewer(palette="Dark2")
+# Use grey scale
+p + scale_fill_grey()
+
+
+# Change bar fill colors to blues
+p <- p+scale_fill_brewer(palette="Blues")
+p + theme(legend.position="top")
+p + theme(legend.position="bottom")
+# Remove legend
+p + theme(legend.position="none")
+
+
+### Data definition (multiple groups)
+df2 <- data.frame(supp=rep(c("VC", "OJ"), each=3),
+                  dose=rep(c("D1", "D2", "D3"),2),
+                  len=c(6.8, 15, 33, 4.2, 10, 29.5))
+head(df2)
+
+# Stacked barplot with multiple groups
+ggplot(data=df2, aes(x=dose, y=len, fill=supp)) +
+  geom_bar(stat="identity", width = 0.5)
+# Use position=position_dodge()
+ggplot(data=df2, aes(x=dose, y=len, fill=supp)) +
+  geom_bar(stat="identity", width = 0.5, position=position_dodge())
+
+
+# Change the colors manually
+p <- ggplot(data=df2, aes(x=dose, y=len, fill=supp)) +
+  geom_bar(stat="identity", color="black", position=position_dodge())+
+  theme_minimal()
+# Use custom colors
+p + scale_fill_manual(values=c('#999999','#E69F00'))
+# Use brewer color palettes
+p + scale_fill_brewer(palette="Blues")
+
+### Labeling
+ggplot(data=df2, aes(x=dose, y=len, fill=supp)) +
+  geom_bar(stat="identity", position=position_dodge())+
+  geom_text(aes(label=len), vjust=1.6, color="red",
+            position = position_dodge(0.9), size=8)+
+  scale_fill_brewer(palette="Paired")+
+  theme_minimal()
+
